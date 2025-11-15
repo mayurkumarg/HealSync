@@ -5,6 +5,8 @@ import loginPharmacy from "../controllers/pharmacy/loginPharmacy.js";
 import forgotPasswordPharmacy from "../controllers/pharmacy/forgotPassword.js";
 import {passwordResetServerPharmacy,passwordResetClientPharmacy} from "../controllers/pharmacy/resetPassword.js";
 import getNearbyPharmacies from "../controllers/pharmacy/findNearPharmacy.js";
+import updatePharmacy from "../controllers/pharmacy/updatePharmacy.js";
+import pharmacyAuth from "../controllers/pharmacy/pharmacyAuthorizer.js";
 
 const pharmacyRouter = Router();
 
@@ -18,6 +20,8 @@ pharmacyRouter.get("/reset-password/:token",passwordResetClientPharmacy);
 pharmacyRouter.post("/reset-password/:token",passwordResetServerPharmacy);
 
 pharmacyRouter.get("/nearby", getNearbyPharmacies);
+pharmacyRouter.patch("/:pharmacyId", pharmacyAuth,updatePharmacy);
+
 
 
 export default pharmacyRouter;
