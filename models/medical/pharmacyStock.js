@@ -6,58 +6,57 @@ const pharmacyStockSchema = new Schema(
     pharmacyId: {
       type: Schema.Types.ObjectId,
       ref: "Pharmacy",
-      required: true
+      required: true,
     },
 
     medicineId: {
       type: Schema.Types.ObjectId,
       ref: "Medicine",
-      required: true
+      required: true,
     },
 
     quantity: {
       type: Number,
-      default: 0,
-      min: [0, "Quantity cannot be negative"]
+      required: true,
+      min: [0, "Quantity cannot be negative"],
     },
 
     price: {
       type: Number,
-      required: [true, "Price is required"]
+      required: true,
+      min: [0, "Price cannot be negative"],
     },
 
     expiryDate: {
       type: Date,
-      required: [true, "Expiry date is required"]
+      required: true,
     },
 
     batchNo: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     status: {
       type: String,
       enum: ["available", "low", "out_of_stock"],
-      default: "available"
+      default: "available",
     },
 
     lastUpdated: {
       type: Date,
-      default: Date.now
-    }
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );
 
-// Auto-update status & lastUpdated
 pharmacyStockSchema.pre("save", function (next) {
   if (this.quantity === 0) this.status = "out_of_stock";
   else if (this.quantity < 10) this.status = "low";
   else this.status = "available";
 
   this.lastUpdated = Date.now();
-
   next();
 });
 
