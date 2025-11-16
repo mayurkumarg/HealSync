@@ -3,6 +3,7 @@ import userRoute from "./routes/userRoute.js"
 import globalErrorHandler from "./controllers/Error/globalErrorhandler.js";
 import CustomError from "./utils/customError.js";
 import pharmacyRouter from "./routes/pharmacyRoute.js";
+import medicineRouter from "./routes/medicineRoute.js";
 
 const app = express();
 
@@ -17,6 +18,9 @@ app.use("/api/auth",userRoute);
 
 //^router for managing the pharmacy functionality
 app.use("/api/pharmacy",pharmacyRouter);
+
+//^router for managing the medicine functionality
+app.use("/api/medicine",medicineRouter);
 
 //^ middleware for serving the static files
 // app.use(express.static("public"));
