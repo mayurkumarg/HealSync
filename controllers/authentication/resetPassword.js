@@ -147,21 +147,17 @@ const getResetPage = (token) => {
     </body>
     </html>`;
 };
+
 const passwordResetClient = handelAsyncFunction(async (req, res, next) => {
 
-    //^ first step is to extract the token and verify it exists in out databse
-
-    const {token} = req.params;
+    const { token } = req.params;
 
     const user = await userModel.findOne({
-        token ,
-        tokenExpires : { $gt : Date.now()}
-    })
+        token,
+        tokenExpires: { $gt: Date.now() }
+    });
 
-    // console.log(user);
-    
-    //^ is link has expired sending the expired link page
-    if( !user ){
+    if (!user) {
         return res.send(
             `<!DOCTYPE html>
             <html lang="en">
@@ -171,7 +167,7 @@ const passwordResetClient = handelAsyncFunction(async (req, res, next) => {
                 <title>Reset Password | ReBook</title>
                 <style>
                     body {
-                          font-family: Arial, sans-serif;
+                        font-family: Arial, sans-serif;
                         background-color: #f4f4f9;
                         display: flex;
                         justify-content: center;
@@ -191,48 +187,38 @@ const passwordResetClient = handelAsyncFunction(async (req, res, next) => {
                     <p>Your reset password link has expired. Please request a new one.</p>
                 </div>
             </body>
-            </html>
-        `)
+            </html>`
+        );
     }
 
-    //? if not send the reset password form for the user
     res.send(getResetPage(token));
-   
 });
 
-const passwordResetServer = handelAsyncFunction(async(req, res,next) => {
+const passwordResetServer = handelAsyncFunction(async (req, res, next) => {
     
-    const {token} = req.params;
-    
-    //^ ensure that link is valid by finding token on db
+    const { token } = req.params;
+
     const user = await userModel.findOne({
-        token ,
-        tokenExpires : { $gt : Date.now()}
+        token,
+        tokenExpires: { $gt: Date.now() }
     });
 
-    //^ if link has expired send the error of expired link 
-    if( !user ){
-        return next(new CustomError(401,"Link has expired. Please try again before within 10mins of link generation."));   
+    if (!user) {
+        return next(new CustomError(401, "Link has expired. Please try again within 10 minutes of link generation."));
     }
 
-    //~extract the password
-    const {password} = req.body;
+    const { password } = req.body;
 
-    //^modify the reset related feilds on db
     user.password = password;
     user.token = null;
     user.tokenExpires = null;
 
     user.save();
 
-    //? successfully reseted the password 
-    res.status(201).send( {
-        status:"Sucess",
-        message:"Passowrd changed successfully"
-    })
-
-    
-    
+    res.status(201).send({
+        status: "Sucess",
+        message: "Passowrd changed successfully"
+    });
 });
 
 export { passwordResetClient, passwordResetServer };

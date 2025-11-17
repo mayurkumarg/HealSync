@@ -5,20 +5,18 @@ import bcrypt from "bcrypt"
 import CustomError from "../../utils/customError.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
 
-const createUser = handelAsyncFunction( async (req,res,next) => {
+const createUser = handelAsyncFunction(async (req, res, next) => {
     //^verify that the data has been sent by the user
-
-    if(!Object.keys(req.body).length || !req.body.email){ 
-        return next(new CustomError(400,"No data was sent."));
+    if (!Object.keys(req.body).length || !req.body.email) {
+        return next(new CustomError(400, "No data was sent."));
     }
 
     //^verify that the user with same email exists or not 
-    const {email} = req.body;
-    const userExists = await userModel.findOne({email});
+    const { email } = req.body;
+    const userExists = await userModel.findOne({ email });
 
-    
-    if(userExists && userExists.verified){
-        return next(new CustomError(400,"User already exists."));
+    if (userExists && userExists.verified) {
+        return next(new CustomError(400, "User already exists."));
     }
 
     //^if user not exists or exists but not verified the email will go through this section of code
@@ -27,49 +25,42 @@ const createUser = handelAsyncFunction( async (req,res,next) => {
     const verificationToken = generateToken();
     const expireTime = Date.now() + 10 * 60 * 1000;
 
-    //*user exists and not verified his accound just update the feilds with new one and send the verification mail
-    if(userExists && !userExists.verified){
+    //*user exists and not verified his account just update the fields with new one and send the verification mail
+    if (userExists && !userExists.verified) {
         await userModel.findOneAndUpdate(
             { email: userExists.email },
-            { 
+            {
                 ...req.body,
-                password : await bcrypt.hash(req.body.password, +process.env.SALTROUNDS),
-                tokenExpires:expireTime,
-                token: verificationToken 
+                password: await bcrypt.hash(req.body.password, +process.env.SALTROUNDS),
+                tokenExpires: expireTime,
+                token: verificationToken
             }
         );
-    }else{
-         //*user not exists create the record and send the verification email to the user
+    } else {
+        //*user not exists create the record and send the verification email to the user
         const data = await userModel.create({
             ...req.body,
-            tokenExpires:expireTime,
-            verified:false,
-            token:verificationToken  
+            tokenExpires: expireTime,
+            verified: false,
+            token: verificationToken
         });
     }
 
     //^code for generating the link for validation
     const link = `${req.protocol}://${req.get('host')}/api/auth/verify/${verificationToken}`;
 
+    //^this part mails the verification link to the user's email address 
+    const mailerRes = await mail(req.body.name, link, email, next);
 
-
-    //^this part of the mails the verification link to the users mail address 
-    const mailerRes = await mail(req.body.name,link,email,next);
-
-
-    if(mailerRes){
-        return next(new CustomError(500,"our email server is down!. Please try again later."));
+    if (mailerRes) {
+        return next(new CustomError(500, "Our email server is down! Please try again later."));
     }
-
 
     //*if everything goes smooth send the 201 resource created successfully 
     res.status(201).send({
-        status:"success",
-        messgae:`Email a sent your ${email} address. Please verify your email`
-    })
-} ); 
-
-
-
+        status: "success",
+        messgae: `Email sent to your ${email} address. Please verify your email`
+    });
+});
 
 export default createUser;

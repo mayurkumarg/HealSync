@@ -6,9 +6,15 @@ import app from "./app.js"
 
 const PORT = process.env.PORT || 5050 ;
 
-connectDB();
+const startServer = async () => {
+    try {
+        await connectDB();
+        app.listen(PORT,() => {
+            console.log(`server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("Failed to connect to the database. Server not started.", error);
+    }
+};
 
-
-app.listen(PORT,() => {
-    console.log(`server running on port ${PORT}`);
-})
+startServer();

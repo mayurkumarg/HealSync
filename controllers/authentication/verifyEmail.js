@@ -1,15 +1,18 @@
 import userModel from "../../models/userModel.js";
 
-async function verifyEmail(req,res){
+async function verifyEmail(req, res) {
 
-    const {token} = req.params;
+    const { token } = req.params;
 
-    const user = await userModel.findOne({token,tokenExpires:{"$gt":Date.now()}});
+    const user = await userModel.findOne({
+        token,
+        tokenExpires: { "$gt": Date.now() }
+    });
 
-    if(!user){
-     res.status(400).send({
-            status:"failed",
-            message:"link expired!. Please sign-up again."
+    if (!user) {
+        res.status(400).send({
+            status: "failed",
+            message: "link expired!. Please sign-up again."
         });
         return;
     }
@@ -19,7 +22,7 @@ async function verifyEmail(req,res){
             status: "failed",
             message: "Email is already verified!"
         });
-    } 
+    }
 
     user.verified = true;
     user.token = null;
@@ -28,8 +31,8 @@ async function verifyEmail(req,res){
     await user.save();
 
     res.status(200).send({
-        status:"success",
-        message:"Successfully completed account creation process."
+        status: "success",
+        message: "Successfully completed account creation process."
     });
 }
 

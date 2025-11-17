@@ -1,39 +1,53 @@
 import express from "express";
-import userRoute from "./routes/userRoute.js"
+import cors from "cors";        // Added from feature branch
+import userRoute from "./routes/userRoute.js";
 import globalErrorHandler from "./controllers/Error/globalErrorhandler.js";
 import CustomError from "./utils/customError.js";
 import pharmacyRouter from "./routes/pharmacyRoute.js";
-import medicineRouter from "./routes/medicineRoute.js";
+import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
 
 const app = express();
 
+// ------------------------------------------------------
+// ENABLE CORS BEFORE ANY OTHER MIDDLEWARE
+// ------------------------------------------------------
+app.use(
+    cors({
+        origin: "http://localhost:3000",
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization"]
+    })
+);
 
+// ------------------------------------------------------
+// REQUIRED MIDDLEWARE FOR JSON BODY
+// ------------------------------------------------------
+app.use(express.json());
 
+// ------------------------------------------------------
+// ROUTES
+// ------------------------------------------------------
 
-//^middleware for the post body data
-app.use(express.json())
+// Authentication routes
+app.use("/api/auth", userRoute);
 
-//^ router that manages the authentication functionality
-app.use("/api/auth",userRoute);
+// Pharmacy routes
+app.use("/api/pharmacy", pharmacyRouter);
 
-//^router for managing the pharmacy functionality
-app.use("/api/pharmacy",pharmacyRouter);
+// Medicine routes (exists only in MAIN – preserved here)
+app.use("/api/medicine", medicineRouter);
 
-//^router for managing the medicine functionality
-app.use("/api/medicine",medicineRouter);
+// ------------------------------------------------------
+// 404 NOT FOUND HANDLER
+// ------------------------------------------------------
+app.use("*", (req, res, next) => {
+    next(new CustomError(404, `${req.baseUrl} not found in our server.`));
+});
 
-//^ middleware for serving the static files
-// app.use(express.static("public"));
-
-
-//^ 404 route middleware
-app.use("*",(req,res,next)=>{
-    next(new CustomError(404,`${req.baseUrl} not found in our server.`))
-})
-
-//^global error handler
+// ------------------------------------------------------
+// GLOBAL ERROR HANDLER
+// ------------------------------------------------------
 app.use(globalErrorHandler);
 
-
 export default app;
-
