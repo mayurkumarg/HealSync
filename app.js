@@ -5,6 +5,7 @@ import globalErrorHandler from "./controllers/Error/globalErrorhandler.js";
 import CustomError from "./utils/customError.js";
 import pharmacyRouter from "./routes/pharmacyRoute.js";
 import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
+import reminderRouter from "./routes/reminderRoute.js";
 
 const app = express();
 
@@ -37,6 +38,18 @@ app.use("/api/pharmacy", pharmacyRouter);
 
 // Medicine routes (exists only in MAIN – preserved here)
 app.use("/api/medicine", medicineRouter);
+
+// Reminder routes
+app.use("/api/reminders", reminderRouter);
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "Server is running",
+        timestamp: new Date(),
+    });
+});
 
 // ------------------------------------------------------
 // 404 NOT FOUND HANDLER
