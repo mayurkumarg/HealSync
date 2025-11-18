@@ -8,6 +8,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// const transporter  = nodemailer.createTransport({
+//     host: "sandbox.smtp.mailtrap.io",
+//     port: 2525,
+//     secure: false,
+//     auth: {
+//       user: "330131c7d98924",
+//       pass: "24144cdc4b7a93"
+//     }
+//   });
+
+
+
 // ---------------------------------------------------------
 // 1) EMAIL VERIFICATION (HealSync)
 // ---------------------------------------------------------
