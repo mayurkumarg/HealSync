@@ -1,70 +1,86 @@
 import express from "express";
-import cors from "cors";        // Added from feature branch
+import cors from "cors";
+
+// Core feature routes
 import userRoute from "./routes/userRoute.js";
+import userFuncRoutes from "./routes/userFuncRoutes.js";
+import pharmacyRouter from "./routes/pharmacyRoute.js";
+import medicineRouter from "./routes/medicineRoute.js";
+import reminderRouter from "./routes/reminderRoute.js";
+
+// AI / ML routes
+import documentAIRoutes from "./routes/documentAI.js";
+import chatRoutes from "./routes/chatRoute.js";
+import formEntryRoute from "./routes/formEntryRoute.js";
+import documentRoute from "./routes/documentRoute.js";
+
+// Error handlers
 import globalErrorHandler from "./controllers/Error/globalErrorhandler.js";
 import CustomError from "./utils/customError.js";
-import pharmacyRouter from "./routes/pharmacyRoute.js";
-import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
-import reminderRouter from "./routes/reminderRoute.js";
-import userFuncRoutes from "./routes/userFuncRoutes.js"; // Added from feature branch
 
 const app = express();
 
-// ------------------------------------------------------
-// ENABLE CORS BEFORE ANY OTHER MIDDLEWARE
-// ------------------------------------------------------
+/* ------------------------------------------------------
+   CORS
+------------------------------------------------------ */
 app.use(
-    cors({
-        origin: "http://localhost:3000",
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-        allowedHeaders: ["Content-Type", "Authorization"]
-    })
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
-// ------------------------------------------------------
-// REQUIRED MIDDLEWARE FOR JSON BODY
-// ------------------------------------------------------
+/* ------------------------------------------------------
+   JSON BODY PARSER
+------------------------------------------------------ */
 app.use(express.json());
 
-// ------------------------------------------------------
-// ROUTES
-// ------------------------------------------------------
-
-// Authentication routes
+/* ------------------------------------------------------
+   CORE ROUTES
+------------------------------------------------------ */
 app.use("/api/auth", userRoute);
-
-// User functionality routes
 app.use("/api/user", userFuncRoutes);
-
-// Pharmacy routes
 app.use("/api/pharmacy", pharmacyRouter);
-
-// Medicine routes (exists only in MAIN – preserved here)
 app.use("/api/medicine", medicineRouter);
-
-// Reminder routes
 app.use("/api/reminders", reminderRouter);
 
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Server is running",
-        timestamp: new Date(),
-    });
-});
+/* ------------------------------------------------------
+   AI & ML ROUTES  (MUST BE BEFORE 404)
+------------------------------------------------------ */
 
-// ------------------------------------------------------
-// 404 NOT FOUND HANDLER
-// ------------------------------------------------------
+// AI document reader (OCR + Llama3 Classification)
+app.use("/api/documents/ai", documentAIRoutes);
+
+// AI Chat route
+app.use("/api/chat", chatRoutes);
+
+// Form entry (patient records)
+app.use("/api/form-entry", formEntryRoute);
+app.use("/api/documents", documentRoute);
+
+/* ------------------------------------------------------
+   HEALTH CHECK
+------------------------------------------------------ */
+app.get("/api/health", (req, res) =>
+  res.status(200).json({
+    success: true,
+    message: "Server is running",
+    timestamp: new Date(),
+  })
+);
+
+/* ------------------------------------------------------
+   404 HANDLER — MUST COME AFTER ALL ROUTES
+------------------------------------------------------ */
 app.use("*", (req, res, next) => {
-    next(new CustomError(404, `${req.baseUrl} not found in our server.`));
+  next(new CustomError(404, `${req.baseUrl} not found in our server.`));
 });
 
-// ------------------------------------------------------
-// GLOBAL ERROR HANDLER
-// ------------------------------------------------------
+/* ------------------------------------------------------
+   GLOBAL ERROR HANDLER
+------------------------------------------------------ */
 app.use(globalErrorHandler);
 
 export default app;
