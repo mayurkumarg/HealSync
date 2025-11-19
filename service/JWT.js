@@ -2,14 +2,12 @@ import jwt from "jsonwebtoken";
 
 
 export const getJWT = (data) => {
-    const token = jwt.sign(data, process.env.SECRECT_CODE,{ 
+    const token = jwt.sign(data, process.env.JWT_SECRET,{ 
         expiresIn: "1h"
-    });
+    }); 
 
     return token;
 }
-
-
 export const verifyJwt = (token) => {
-    return jwt.verify(token, process.env.SECRECT_CODE);
+    return jwt.verify(token, process.env.JWT_SECRET);
 }

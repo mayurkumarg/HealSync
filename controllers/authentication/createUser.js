@@ -1,6 +1,8 @@
 import userModel from "./../../models/userModel.js"
 import generateToken from "../../service/token.js";
 import { mail } from "../../service/email.js";
+import { getJWT } from "../../service/JWT.js";
+import mail from "../../service/email.js";
 import bcrypt from "bcrypt"
 import CustomError from "../../utils/customError.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
@@ -54,13 +56,42 @@ const createUser = handelAsyncFunction(async (req, res, next) => {
 
     if (!mailerRes || mailerRes.success === false) {
         return next(new CustomError(500, "Our email server is down! Please try again later."));
+    if (process.env.EMAIL && process.env.EMAIL_PASSWORD) {
+        const mailerRes = await mail(req.body.name, link, email, next);
+        if (mailerRes) {
+            return next(new CustomError(500, "Our email server is down! Please try again later."));
+        }
+        //*if everything goes smooth send the 201 resource created successfully 
+        res.status(201).send({
+            status: "success",
+            messgae: `Email sent to your ${email} address. Please verify your email`
+        });
+    } else {
+        // Email not configured - mark as verified for testing
+        await userModel.findOneAndUpdate(
+            { email },
+            { verified: true }
+        );
+        
+        const user = await userModel.findOne({ email });
+        const JWT = getJWT({
+            id: user._id,
+            email: user.email,
+            username: user.username
+        });
+        
+        res.status(201).send({
+            status: "success",
+            message: `User registered successfully`,
+            token: JWT,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                username: user.username
+            }
+        });
     }
-
-    //*if everything goes smooth send the 201 resource created successfully 
-    res.status(201).send({
-        status: "success",
-        messgae: `Email sent to your ${email} address. Please verify your email`
-    });
 });
 
 export default createUser;

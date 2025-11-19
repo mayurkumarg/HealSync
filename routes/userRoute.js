@@ -22,7 +22,7 @@ const userRouter = express.Router();
 
 userRouter.post("/sign-up", createUser);
 userRouter.get("/verify/:token", verifyEmail);
-userRouter.post("/login", login);
+userRouter.get("/login", login);
 userRouter.post("/forgot-password", limiter, forgotPassword);
 userRouter.get("/reset-password/:token", passwordResetClient);
 userRouter.post("/reset-password/:token", limiter, passwordResetServer);

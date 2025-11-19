@@ -8,12 +8,16 @@ const globalErrorHandler = (error, req, res, next) => {
     error.status = error.status || "error";
     
     //~ sending the different format for application in the prodution and one in development 
-    if( process.env.NODE_ENV === "DEV"){
+    if( process.env.NODE_ENV === "development"){
         developmentError(error,res);
         return;
     }
 
-    
+    // Production error response
+    res.status(error.statusCode).json({
+        status: error.status,
+        message: error.message
+    });
 }
 
 
