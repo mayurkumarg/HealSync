@@ -6,6 +6,7 @@ import CustomError from "./utils/customError.js";
 import pharmacyRouter from "./routes/pharmacyRoute.js";
 import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
 import reminderRouter from "./routes/reminderRoute.js";
+import userFuncRoutes from "./routes/userFuncRoutes.js"; // Added from feature branch
 
 const app = express();
 
@@ -32,6 +33,9 @@ app.use(express.json());
 
 // Authentication routes
 app.use("/api/auth", userRoute);
+
+// User functionality routes
+app.use("/api/user", userFuncRoutes);
 
 // Pharmacy routes
 app.use("/api/pharmacy", pharmacyRouter);
