@@ -1,6 +1,6 @@
 import Pharmacy from "../../models/medical/pharmacy.js";
 import generateToken from "../../service/token.js";
-import mail from "../../service/email.js";
+import { mail } from "../../service/email.js";
 import bcrypt from "bcrypt";
 import CustomError from "../../utils/customError.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
@@ -54,7 +54,7 @@ const createPharmacy = handelAsyncFunction(async (req, res, next) => {
   // ^ Step 6: Send verification email
   const mailerRes = await mail(req.body.name, link, email, next);
 
-  if (mailerRes) {
+  if (!mailerRes || mailerRes.success === false) {
     return next(
       new CustomError(500, "Our email server is down! Please try again later.")
     );

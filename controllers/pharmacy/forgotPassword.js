@@ -39,7 +39,7 @@ const forgotPasswordPharmacy = handelAsyncFunction(async (req, res, next) => {
 
   //~ Step 6: Send email with reset link
   const mailerRes = await mailForgotPassword(pharmacy.name, resetLink, email);
-  if (mailerRes) {
+  if (!mailerRes || mailerRes.success === false) {
     return next(
       new CustomError(
         500,

@@ -1,5 +1,6 @@
 import userModel from "./../../models/userModel.js"
 import generateToken from "../../service/token.js";
+import { mail } from "../../service/email.js";
 import { getJWT } from "../../service/JWT.js";
 import mail from "../../service/email.js";
 import bcrypt from "bcrypt"
@@ -51,6 +52,10 @@ const createUser = handelAsyncFunction(async (req, res, next) => {
     const link = `${req.protocol}://${req.get('host')}/api/auth/verify/${verificationToken}`;
 
     //^this part mails the verification link to the user's email address 
+    const mailerRes = await mail(req.body.name, link, email, next);
+
+    if (!mailerRes || mailerRes.success === false) {
+        return next(new CustomError(500, "Our email server is down! Please try again later."));
     if (process.env.EMAIL && process.env.EMAIL_PASSWORD) {
         const mailerRes = await mail(req.body.name, link, email, next);
         if (mailerRes) {

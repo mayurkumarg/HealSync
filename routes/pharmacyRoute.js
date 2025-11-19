@@ -17,6 +17,13 @@ import findNearest from "../controllers/pharmacy/functionality/nearestWithStock.
 import lowStock from "../controllers/pharmacy/functionality/lowCostAlert.js";
 import expiryAlert from "../controllers/pharmacy/functionality/expiryAlert.js";
 
+import {
+  searchByMedicine,
+  filterPharmacies,
+  updateInventory,
+  getPharmacyById,
+} from "../controllers/pharmacy/locationController.js";
+
 
 const pharmacyRouter = Router();
 
@@ -31,6 +38,13 @@ pharmacyRouter.post("/reset-password/:token",passwordResetServerPharmacy);
 
 pharmacyRouter.get("/nearby", getNearbyPharmacies);
 pharmacyRouter.patch("/:pharmacyId", pharmacyAuth,updatePharmacy);
+
+// geolocation & inventory routes
+pharmacyRouter.get("/nearby", getNearbyPharmacies);
+pharmacyRouter.get("/search-medicine", searchByMedicine);
+pharmacyRouter.get("/filter", filterPharmacies);
+pharmacyRouter.put("/:id/inventory", updateInventory);
+pharmacyRouter.get("/:id", getPharmacyById);
 
 pharmacyRouter.post("/stock", pharmacyAuth, registerStock);
 pharmacyRouter.patch("/stock/:stockId", pharmacyAuth, updateStock);

@@ -17,6 +17,12 @@ import documentRoute from "./routes/documentRoute.js";
 // Error handlers
 import globalErrorHandler from "./controllers/Error/globalErrorhandler.js";
 import CustomError from "./utils/customError.js";
+import pharmacyRouter from "./routes/pharmacyRoute.js";
+import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
+import hospitalRouter from "./routes/hospitalRoute.js";
+import doctorRouter from "./routes/doctorRoute.js";
+import formEntryRouter from "./routes/formEntryRoute.js";
+import accessRouter from "./routes/accessRoute.js";
 
 const app = express();
 
@@ -71,6 +77,17 @@ app.get("/api/health", (req, res) =>
   })
 );
 
+app.use("/api/hospital", hospitalRouter);
+app.use("/api/doctor", doctorRouter);
+
+app.use("/api/access", accessRouter);
+
+// Register the form entry routes:
+app.use("/api/form", formEntryRouter);
+
+// ------------------------------------------------------
+// 404 NOT FOUND HANDLER
+// ------------------------------------------------------
 /* ------------------------------------------------------
    404 HANDLER — MUST COME AFTER ALL ROUTES
 ------------------------------------------------------ */
