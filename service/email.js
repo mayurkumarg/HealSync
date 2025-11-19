@@ -258,5 +258,269 @@ async function mailForgotPassword(name, link, toEmail) {
   }
 }
 
+// ---------------------------------------------------------
+// 3) REMINDER NOTIFICATION EMAIL
+// ---------------------------------------------------------
+async function sendReminderEmail(reminder) {
+  try {
+    const user = reminder.userId;
+    const reminderTime = new Date(reminder.reminderDateTime).toLocaleString();
+    const priorityColor = {
+      low: "#3b82f6",
+      medium: "#f59e0b",
+      high: "#ef4444",
+      critical: "#8b0000",
+    }[reminder.priority] || "#f59e0b";
+
+    const typeEmoji = {
+      appointment: "📅",
+      prescription: "💊",
+      report: "📋",
+      medication: "💉",
+      "lab-test": "🧪",
+      "follow-up": "👨‍⚕️",
+      other: "📌",
+    }[reminder.reminderType] || "📌";
+
+    const info = await transporter.sendMail({
+      from: '"HealSync Reminders" <reminders@healsync.com>',
+      to: user.email,
+      subject: `Reminder: ${reminder.title} - HealSync`,
+      text: `Hello ${user.firstName},\n\nThis is a reminder for:\n\n${reminder.title}\n\nDate & Time: ${reminderTime}\nType: ${reminder.reminderType}\nPriority: ${reminder.priority}\n\nDescription: ${reminder.description || "No additional details"}\n\n${reminder.location ? `Location: ${reminder.location}\n` : ""}\n\nPlease take necessary action.\n\n– HealSync Team`,
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reminder Notification | HealSync</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8f9fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 30px 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px 25px;
+        }
+
+        .greeting {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .reminder-card {
+            background: #f3f4f6;
+            border-left: 5px solid ${priorityColor};
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .reminder-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1f2937;
+            margin: 0 0 15px 0;
+        }
+
+        .reminder-details {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .reminder-details li {
+            padding: 8px 0;
+            color: #555;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        .reminder-details li:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .detail-value {
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .priority-badge {
+            display: inline-block;
+            background: ${priorityColor};
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .action-section {
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .button {
+            display: inline-block;
+            background: #2563eb;
+            color: white !important;
+            padding: 12px 28px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .button:hover {
+            background: #1e40af;
+        }
+
+        .footer {
+            background: #f9fafb;
+            padding: 20px 25px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        @media(max-width: 480px) {
+            .container {
+                margin: 10px;
+            }
+            .header {
+                padding: 20px 15px;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            .reminder-card {
+                padding: 15px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>${typeEmoji} ${reminder.title}</h1>
+            <p>You have a scheduled reminder</p>
+        </div>
+
+        <div class="content">
+            <p class="greeting">Hello <strong>${user.firstName}</strong>,</p>
+
+            <p>This is a timely reminder about your upcoming task:</p>
+
+            <div class="reminder-card">
+                <div class="reminder-title">
+                    ${reminder.title}
+                    <span class="priority-badge">${reminder.priority.toUpperCase()}</span>
+                </div>
+
+                <ul class="reminder-details">
+                    <li>
+                        <span class="detail-label">📅 Date & Time:</span>
+                        <span class="detail-value">${reminderTime}</span>
+                    </li>
+                    <li>
+                        <span class="detail-label">🏷️ Type:</span>
+                        <span class="detail-value">${reminder.reminderType}</span>
+                    </li>
+                    ${reminder.description ? `
+                    <li>
+                        <span class="detail-label">📝 Details:</span>
+                        <span class="detail-value">${reminder.description}</span>
+                    </li>
+                    ` : ""}
+                    ${reminder.location ? `
+                    <li>
+                        <span class="detail-label">📍 Location:</span>
+                        <span class="detail-value">${reminder.location}</span>
+                    </li>
+                    ` : ""}
+                    ${reminder.notes ? `
+                    <li>
+                        <span class="detail-label">📌 Notes:</span>
+                        <span class="detail-value">${reminder.notes}</span>
+                    </li>
+                    ` : ""}
+                </ul>
+            </div>
+
+            <p style="color: #666; font-size: 14px; margin: 15px 0;">
+                Please make sure to complete this task at the scheduled time. If you have any questions or need to reschedule, you can manage your reminders in the HealSync app.
+            </p>
+
+            <div class="action-section">
+                <a href="${process.env.FRONTEND_URL}/reminders" class="button">View in HealSync</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated reminder from <strong>HealSync</strong></p>
+            <p>© ${new Date().getFullYear()} HealSync. All rights reserved.</p>
+            <p>If you wish to stop receiving reminders, you can disable notifications in your account settings.</p>
+        </div>
+    </div>
+</body>
+
+</html>
+            `,
+    });
+
+    return info;
+  } catch (error) {
+    console.error("Error sending reminder email:", error);
+    throw error;
+  }
+}
+
 export default mail;
-export { mailForgotPassword };
+export { mailForgotPassword, sendReminderEmail };
