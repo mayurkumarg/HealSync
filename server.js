@@ -1,6 +1,7 @@
-import dotenv from "dotenv/config";
 import connectDB from "./configure/mongoDB.js"
 import http from "http";
+
+import dotenv from "dotenv/config";
 
 import app from "./app.js"
 import { initializeSocket } from "./service/socket.js";
@@ -9,7 +10,7 @@ import { initializeScheduler } from "./service/reminderScheduler.js";
 // Add global error handlers
 process.on("unhandledRejection", (err) => {
     console.error("❌ UNHANDLED REJECTION:", err);
-});
+}); 
 
 process.on("uncaughtException", (err) => {
     console.error("❌ UNCAUGHT EXCEPTION:", err);

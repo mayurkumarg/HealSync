@@ -1,13 +1,7 @@
 import mongoose from "mongoose";
 
-const bpSchema = new mongoose.Schema(
+const readingSchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "User",
-    },
-
     systolic: {
       type: Number,
       required: true,
@@ -36,61 +30,60 @@ const bpSchema = new mongoose.Schema(
     },
 
     status: {
-      type: String, // simple status → "normal", "high", "low"
+      type: String, // "normal", "high", "low"
       required: true,
     },
 
-    // Medication tracking
-    drugName: {
-      type: String,
-      default: null,
-    },
-
-    dosage: {
-      type: String, // Example: "10mg once daily"
-      default: null,
-    },
-
-    tabletsPerDay: {
-      type: Number, // For tracking daily intake
-      default: null,
-    },
-
-    stockAvailable: {
-      type: Number, // How many tablets left
-      default: null,
-    },
-
-    // Date fields
     recordedAt: {
       type: Date,
       required: true,
     },
 
     weekday: {
-      type: Number, // 0–6 → for weekly trends
+      type: Number, // 0-6 → weekly trend
       required: true,
     },
 
     month: {
-      type: Number, // 1–12 → for monthly trends
+      type: Number, // 1-12 → monthly trend
       required: true,
     },
 
-    // Changes from last reading
     delta: {
       systolic: { type: Number, default: 0 },
       diastolic: { type: Number, default: 0 },
       pulse: { type: Number, default: 0 },
     },
+  },
+  { _id: true } // allow individual IDs for each reading
+);
 
-    // AI or rule-based suggestions
-    suggestions: {
-      type: [String],
-      default: [],
+const bpSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+      unique: true,
     },
+
+    // Medication Tracking
+    drugName: { type: String, default: null },
+    dosage: { type: String, default: null },
+    tabletsPerDay: { type: Number, default: null },
+    stockAvailable: { type: Number, default: null },
+
+    // Universal suggestion for latest reading
+    recentSuggestion: {
+      type: String,
+      default: null,
+    },
+
+    // All readings
+    readings: [readingSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.model("BPReading", bpSchema);
+
+export default mongoose.model("BPTracking", bpSchema);
