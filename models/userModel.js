@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 //?   User schema of the application 
-
 const userScheme = mongoose.Schema({
     name: {
         type: String,
@@ -78,6 +77,24 @@ const userScheme = mongoose.Schema({
     passwordChangedAt: {
         type: Date,
         default: null
+    },
+
+    // ⭐️⭐️⭐️ ADDED FIELDS FROM models.js ⭐️⭐️⭐️
+
+    role: {
+        type: String,
+        enum: ["patient", "doctor", "hospital", "pharmacy", "admin"],
+        default: "patient"
+    },
+
+    abhaId: {
+        type: String,
+        default: null
+    },
+
+    biometricToken: {
+        type: String,
+        default: null
     }
 
 }, {
@@ -98,4 +115,5 @@ userScheme.methods.comparePassword = async function (userPassword) {
 };
 
 const userModel = mongoose.model("User", userScheme);
+
 export default userModel;

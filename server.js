@@ -1,42 +1,35 @@
-import connectDB from "./configure/mongoDB.js"
+import connectDB from "./configure/mongoDB.js";
 import http from "http";
-
 import dotenv from "dotenv/config";
 
-import app from "./app.js"
+import app from "./app.js";
 import { initializeSocket } from "./service/socket.js";
 import { initializeScheduler } from "./service/reminderScheduler.js";
 
-// Add global error handlers
 process.on("unhandledRejection", (err) => {
-    console.error("❌ UNHANDLED REJECTION:", err);
-}); 
-
+  console.error("❌ UNHANDLED REJECTION:", err);
+});
 process.on("uncaughtException", (err) => {
-    console.error("❌ UNCAUGHT EXCEPTION:", err);
+  console.error("❌ UNCAUGHT EXCEPTION:", err);
 });
 
-const PORT = process.env.PORT || 5050 ;
+const PORT = process.env.PORT || 5050;
 
 const startServer = async () => {
-    try {
-        await connectDB();
-        
-        // Create HTTP server for Socket.IO
-        const server = http.createServer(app);
-        
-        // Initialize Socket.IO
-        initializeSocket(server);
-        
-        // Initialize Reminder Scheduler
-        initializeScheduler();
-        
-        server.listen(PORT,() => {
-            console.log(`server running on port ${PORT}`);
-        });
-    } catch (error) {
-        console.error("Failed to connect to the database. Server not started.", error);
-    }
+  try {
+    await connectDB();
+
+    const server = http.createServer(app);
+
+    initializeSocket(server);
+    initializeScheduler();
+
+    server.listen(PORT, () => {
+      console.log(`🚀 HealSync server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to connect to the database. Server not started.", err);
+  }
 };
 
 startServer();
