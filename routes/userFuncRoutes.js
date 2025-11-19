@@ -12,7 +12,20 @@ userFuncRoutes.post("/BP", authorization,initBpReading);
 userFuncRoutes.post("/BP/BPReadings", authorization,addBpReading);
 
 userFuncRoutes.get("/BP", authorization,getBpReadings);
-// userFuncRoutes.patch("/health/bp/update/:id", authorization, updateBpReading);
+userFuncRoutes.patch("/BP", authorization, updateBpReading);
 userFuncRoutes.delete("/BP", authorization, deleteBpReading);
 
+
+import initSugarProfile from "../controllers/UserFunctionality/sugar/intiSugarTracking.js";
+import addSugarReading from "../controllers/UserFunctionality/sugar/sugarReading.js";
+import getSugarReadings from "../controllers/UserFunctionality/sugar/getSugarReading.js";
+import updateSugarReading from "../controllers/UserFunctionality/sugar/updateSugar.js";
+import deleteSugarReading from "../controllers/UserFunctionality/sugar/deleteDocNReading.js";
+
+userFuncRoutes.post("/Sugar", authorization,initSugarProfile);
+userFuncRoutes.post("/Sugar/SugarReadings", authorization,addSugarReading);
+
+userFuncRoutes.get("/Sugar", authorization,getSugarReadings);
+userFuncRoutes.patch("/Sugar", authorization, updateSugarReading);
+userFuncRoutes.delete("/Sugar", authorization, deleteSugarReading);
 export default userFuncRoutes;

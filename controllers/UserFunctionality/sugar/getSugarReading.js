@@ -1,67 +1,69 @@
 import handelAsyncFunction from "../../../utils/asyncFunctionHandler.js";
 import CustomError from "../../../utils/customError.js";
-import BPTracking from "../../../models/bp.js";
+import SugarTracking from "../../../models/sugar.js";
 
 /**
- * @desc   Get BP readings OR BP document (not both)
- * @route  GET /bp/reading?include=document
- * @route  GET /bp/reading?include=readings&range=month&limit=50
+ * @desc   Get Sugar readings OR Sugar medication document (not both)
+ * @route  GET /sugar/reading?include=document
+ * @route  GET /sugar/reading?include=readings&range=month&limit=50
  * @access User
  */
 
-const getBpReadings = handelAsyncFunction(async (req, res, next) => {
+const getSugarReadings = handelAsyncFunction(async (req, res, next) => {
 
     const userId = req.user._id;
 
-    // include = document | readings
+    // include: "document" | "readings"
     const include = req.query.include || "readings";
 
     if (!["document", "readings"].includes(include)) {
-        return next(new CustomError(400, "include must be 'document' or 'readings'"));
+        return next(new CustomError(400, "include must be 'document' or 'readings'."));
     }
 
-    const bpProfile = await BPTracking.findOne({ userId });
+    /** -------------------- Fetch Profile -------------------- */
+    const sugarProfile = await SugarTracking.findOne({ userId });
 
-    if (!bpProfile) {
-        return next(new CustomError(404, "No BP profile found for this user."));
+    if (!sugarProfile) {
+        return next(new CustomError(404, "No Sugar profile found for this user."));
     }
 
-    /** -------------------------------------------------
-     * OPTION 1 → RETURN ONLY DOCUMENT
-     * ------------------------------------------------- */
+    /** ----------------------------------------------------------
+     * OPTION 1 → RETURN ONLY DOCUMENT DETAILS
+     * ---------------------------------------------------------- */
     if (include === "document") {
         return res.status(200).json({
             status: "success",
-            message: "BP medication document fetched successfully.",
+            message: "Sugar medication document fetched successfully.",
             document: {
-                drugName: bpProfile.drugName,
-                dosage: bpProfile.dosage,
-                tabletsPerDay: bpProfile.tabletsPerDay,
-                stockAvailable: bpProfile.stockAvailable,
-                recentSuggestion: bpProfile.recentSuggestion
+                drugName: sugarProfile.drugName,
+                dosage: sugarProfile.dosage,
+                tabletsPerDay: sugarProfile.tabletsPerDay,
+                stockAvailable: sugarProfile.stockAvailable
             }
         });
     }
 
-    /** -------------------------------------------------
+    /** ----------------------------------------------------------
      * OPTION 2 → RETURN ONLY READINGS
-     * ------------------------------------------------- */
+     * ---------------------------------------------------------- */
 
     const range = req.query.range || "all";
     const forGraph = req.query.for === "graph";
     const page = Number(req.query.page) || 1;
 
-    // limit with safe boundaries
+    // limit (min=1, max=500)
     let limit = Number(req.query.limit) || 100;
     if (limit > 500) limit = 500;
     if (limit < 1) limit = 1;
 
     const skip = (page - 1) * limit;
 
-    let readings = [...bpProfile.readings];
+    /** -------------------- Clone Readings -------------------- */
+    let readings = [...sugarProfile.readings];
+
+    /** -------------------- Range Filter -------------------- */
     const now = new Date();
 
-    // Range filters
     if (range === "week") {
         const weekAgo = new Date(now);
         weekAgo.setDate(now.getDate() - 7);
@@ -80,42 +82,44 @@ const getBpReadings = handelAsyncFunction(async (req, res, next) => {
         readings = readings.filter(r => r.recordedAt >= yearAgo);
     }
 
-    // Sort newest first
+    /** -------------------- Sort by Newest -------------------- */
     readings.sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
 
+    /** -------------------- Pagination -------------------- */
     const total = readings.length;
     const paginated = readings.slice(skip, skip + limit);
 
     if (!paginated.length) {
         return res.status(404).json({
             status: "failed",
-            message: "No readings found for this range or page.",
+            message: "No sugar readings found for this range or page.",
         });
     }
 
-    // Graph mode → reduce payload
+    /** -------------------- Graph Mode (lightweight) -------------------- */
     let readingData = paginated;
+
     if (forGraph) {
         readingData = paginated.map(r => ({
-            systolic: r.systolic,
-            diastolic: r.diastolic,
-            pulse: r.pulse,
-            category: r.category,
+            level: r.level,
+            type: r.type,
+            status: r.status,
             recordedAt: r.recordedAt
         }));
     }
 
+    /** -------------------- Response -------------------- */
     return res.status(200).json({
         status: "success",
-        message: "BP readings fetched successfully.",
-        limit,
-        page,
+        message: "Sugar readings fetched successfully.",
         range,
         forGraph,
+        limit,
+        page,
         totalPages: Math.ceil(total / limit),
         count: readingData.length,
         readings: readingData
     });
 });
 
-export default getBpReadings;
+export default getSugarReadings;

@@ -1,44 +1,24 @@
 import mongoose from "mongoose";
 
-const sugarSchema = new mongoose.Schema(
+/* ------------------ Sugar Reading Subdocument ------------------ */
+const sugarReadingSchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "User",
-    },
-
     level: {
       type: Number,
       required: true,
     },
 
     type: {
-      type: String, // "fasting" | "random" | "post-meal"
+      type: String,
+      enum: ["fasting", "random", "post-meal"],
       required: true,
     },
 
     status: {
-      type: String, // Normal | High | Low | Pre-diabetic | Diabetic
+      type: String,
+      enum: ["Normal", "High", "Low", "Pre-diabetic", "Diabetic"],
       required: true,
     },
-
-    // NEW MEDICATION FIELDS
-    drugName: {
-      type: String,
-      default: null,    // e.g., "Metformin", "Glimepiride"
-    },
-
-    dosage: {
-      type: String,     // e.g., "500mg twice daily"
-      default: null,
-    },
-
-    stockAvailable: {
-      type: Number,     // tablets left
-      default: null,
-    },
-    // END MEDICATION FIELDS
 
     recordedAt: {
       type: Date,
@@ -46,26 +26,64 @@ const sugarSchema = new mongoose.Schema(
     },
 
     weekday: {
-      type: Number, // for weekly trends
+      type: Number, // 0–6
       required: true,
     },
 
     month: {
-      type: Number, // for monthly trends
+      type: Number, // 1–12
       required: true,
     },
 
     delta: {
-      type: Number, // change from the previous sugar level
+      type: Number, // difference from previous reading
       default: 0,
     },
+  },
+  { _id: true }
+);
 
-    suggestions: {
-      type: [String],
-      default: [],
+/* ------------------ Sugar Tracking Parent Schema ------------------ */
+const sugarSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      ref: "User",
     },
+
+    /* -------- Medication Tracking -------- */
+    drugName: {
+      type: String,
+      default: null,
+    },
+
+    dosage: {
+      type: String,
+      default: null,
+    },
+
+    tabletsPerDay: {
+      type: Number,
+      default: null,
+    },
+
+    stockAvailable: {
+      type: Number,
+      default: null,
+    },
+
+    /* -------- Latest suggestion (universal) -------- */
+    recentSuggestion: {
+      type: String,
+      default: null,
+    },
+
+    /* -------- Array of readings -------- */
+    readings: [sugarReadingSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.model("SugarReading", sugarSchema);
+export default mongoose.model("SugarTracking", sugarSchema);
