@@ -44,4 +44,5 @@ formEntrySchema.pre("save", function (next) {
   next();
 });
 
-export default model("FormEntry", formEntrySchema);
+export default mongoose.models.FormEntry || mongoose.model("FormEntry", formEntrySchema);
+

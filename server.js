@@ -5,6 +5,7 @@ import dotenv from "dotenv/config";
 import app from "./app.js";
 import { initializeSocket } from "./service/socket.js";
 import { initializeScheduler } from "./service/reminderScheduler.js";
+import sendBPSugarReminder from "./utils/cronJobs/BPSugarReminder.js";
 
 process.on("unhandledRejection", (err) => {
   console.error("❌ UNHANDLED REJECTION:", err);
@@ -23,6 +24,7 @@ const startServer = async () => {
 
     initializeSocket(server);
     initializeScheduler();
+    sendBPSugarReminder();
 
     server.listen(PORT, () => {
       console.log(`🚀 HealSync server running on port ${PORT}`);

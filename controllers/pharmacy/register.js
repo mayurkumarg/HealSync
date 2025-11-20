@@ -1,6 +1,6 @@
 import Pharmacy from "../../models/medical/pharmacy.js";
 import generateToken from "../../service/token.js";
-import { mail } from "../../service/email.js";
+import mail from "../../service/email.js";
 import bcrypt from "bcrypt";
 import CustomError from "../../utils/customError.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";

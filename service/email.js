@@ -5,8 +5,8 @@ const transporter = nodemailer.createTransport({
   port: 2525,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: "7e6f9e736654ba",
-    pass: "1021e94236cd95",
+    user: "330131c7d98924",
+    pass: "24144cdc4b7a93",
   },
 });
 
@@ -392,5 +392,91 @@ async function sendReminderEmail(reminder) {
   }
 }
 
+
+const sendDrugRefillReminderEmail = async (userId, type, doc) => {
+  try {
+    const name = userId.name;
+    const toEmail = userId.email;
+
+    const { drugName, dosage, tabletsPerDay, stockAvailable, recentSuggestion } = doc;
+
+    const subject = `Reminder: Your ${drugName} stock is running low`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Medicine Refill Reminder</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f7fa; font-family: Arial, sans-serif; }
+    .container { max-width: 550px; margin: auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+    h1 { color: #2563eb; font-size: 22px; margin-bottom: 12px; }
+    p { color: #444; font-size: 15px; line-height: 1.6; }
+    .highlight { background: #fff3cd; padding: 12px; border-left: 4px solid #ffca28; border-radius: 6px; margin: 18px 0; }
+    .info-box { background: #f0f4ff; padding: 12px; border-radius: 6px; margin-top: 12px; }
+    .footer { margin-top: 28px; text-align: center; color: #777; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Hello ${name},</h1>
+
+    <p>This is a friendly reminder from <strong>HealSync</strong>.</p>
+
+    <div class="highlight">
+      <strong>Your medicine stock is running low.</strong>  
+      <br/>
+      You currently have <strong>${stockAvailable}</strong> tablets left of <strong>${drugName}</strong>.
+    </div>
+
+    <div class="info-box">
+      <p><strong>Medicine:</strong> ${drugName}</p>
+      <p><strong>Dosage:</strong> ${dosage}</p>
+      <p><strong>Tablets per day:</strong> ${tabletsPerDay}</p>
+      <p><strong>Tracking Type:</strong> ${type === "BP" ? "Blood Pressure" : "Blood Sugar"}</p>
+    </div>
+
+    ${
+      recentSuggestion
+        ? `<p><strongLatest Suggestion:</strong> ${recentSuggestion}</p>`
+        : ""
+    }
+
+    <p>
+      Based on your current usage, we recommend refilling your medication soon to avoid missing your regular dose.
+    </p>
+
+    <p>
+      Please contact your nearby pharmacy or order your medicines at the earliest.
+    </p>
+
+    <div class="footer">
+      Stay healthy 💙<br/>
+      HealSync — Smart Health Monitoring<br/>
+      © ${new Date().getFullYear()} HealSync
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+    const info = await transporter.sendMail({
+      from: '"HealSync Alerts" <no-reply@healsync.com>',
+      to: toEmail,
+      subject,
+      html
+    });
+
+    return { success: true, info };
+
+  } catch (error) {
+    console.error("Drug Refill Reminder Email Failed:", error);
+    return { success: false, error: error.message || error };
+  }
+};
+
+
+
 export default mail;
-export { mailForgotPassword, sendReminderEmail };
+export { mailForgotPassword, sendReminderEmail,mail,sendDrugRefillReminderEmail };

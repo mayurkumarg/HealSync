@@ -4,8 +4,6 @@ import cors from "cors";
 // Core feature routes
 import userRoute from "./routes/userRoute.js";
 import userFuncRoutes from "./routes/userFuncRoutes.js";
-import pharmacyRouter from "./routes/pharmacyRoute.js";
-import medicineRouter from "./routes/medicineRoute.js";
 import reminderRouter from "./routes/reminderRoute.js";
 
 // AI / ML routes

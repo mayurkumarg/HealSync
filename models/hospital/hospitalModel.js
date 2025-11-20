@@ -53,4 +53,5 @@ hospitalSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-export default model("Hospital", hospitalSchema);
+export default mongoose.models.Hospital || mongoose.model("Hospital", hospitalSchema);
+
