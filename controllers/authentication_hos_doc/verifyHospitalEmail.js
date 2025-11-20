@@ -5,7 +5,7 @@ const verifyHospitalEmail = async (req, res) => {
   const hospital = await Hospital.findOne({
     token,
     tokenExpires: { $gt: Date.now() }
-  });
+  }); 
 
   if (!hospital) return res.status(400).send({ status: "failed", message: "Link expired or invalid." });
   if (hospital.verified) return res.status(400).send({ status: "failed", message: "Already verified." });

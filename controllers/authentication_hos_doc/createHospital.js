@@ -5,6 +5,7 @@ import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
 import CustomError from "../../utils/customError.js";
 
 const createHospital = handelAsyncFunction(async (req, res, next) => {
+
   if (!req.body || !req.body.email) return next(new CustomError(400, "No data sent or email missing."));
 
   const { email } = req.body;

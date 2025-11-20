@@ -37,7 +37,6 @@ doctorSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
-const Doctor = mongoose.models.Doctor || model("Doctor", doctorSchema);
 
-
-export default Doctor;
+delete mongoose.models.Doctor;
+export default mongoose.model("Doctor", doctorSchema);

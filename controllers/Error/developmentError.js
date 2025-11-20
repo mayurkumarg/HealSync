@@ -4,6 +4,7 @@
 //! information about the error casued in the application in development mode
 
 function developmentError(error,res){
+    
     res.status(error.statusCode).send({
         status : error.status,
         message : error.message,
