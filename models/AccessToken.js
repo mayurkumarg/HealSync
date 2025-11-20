@@ -14,15 +14,22 @@ const { Schema, model } = mongoose;
  * - used: boolean
  */
 
-const accessTokenSchema = new Schema({
-  shortCode: { type: String, required: true, index: true },
-  token: { type: String, required: true, unique: true },
-  patientId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  purpose: { type: String, enum: ["grant", "request"], default: "grant" },
-  accessType: { type: String, enum: ["view", "edit", "full"], default: "view" },
-  expiresAt: { type: Date, required: true },
-  used: { type: Boolean, default: false }
-}, { timestamps: true });
+const accessTokenSchema = new Schema(
+  {
+    shortCode: { type: String, required: true, index: true },
+    token: { type: String, required: true, unique: true },
+    patientId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    purpose: { type: String, enum: ["grant", "request"], default: "grant" },
+    accessType: {
+      type: String,
+      enum: ["view", "edit", "full"],
+      default: "view",
+    },
+    expiresAt: { type: Date, required: true },
+    used: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
 
 accessTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // optional TTL index cleanup if desired
 

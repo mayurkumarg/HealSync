@@ -42,6 +42,8 @@ export default async function createFormEntry(req, res) {
       }
     }
 
+
+
     if (!canCreate) {
       return res.status(403).json({ status: "failed", message: "You do not have permission to create a form entry for this patient." });
     }
@@ -52,7 +54,7 @@ export default async function createFormEntry(req, res) {
       category: formType, // Assuming formType maps to category
       data: data,
       createdBy: actor.doc._id,
-      creatorModel: actor.type, // This was the missing field
+      creatorModel: actor.type.charAt(0).toUpperCase() + actor.type.slice(1), // This was the missing field
     });
 
     return res.status(201).json({ status: "success", data: formEntry });

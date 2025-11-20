@@ -3,7 +3,6 @@ import developmentError from "./developmentError.js"
 
 const globalErrorHandler = (error, req, res, next) => {
 
-    console.log(error);
 
     //^if the error caused is not by the mistake of user its internal server error
     error.statusCode = error.statusCode || 500;

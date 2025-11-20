@@ -2,8 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 import Doctor from "../models/hospital/doctorModel.js";
 
-const JWT_SECRET = process.env.SECRECT_CODE || process.env.JWT_SECRET || "changeme";
-
+const JWT_SECRET = process.env.JWT_SECRET || "changeme";
 export default async function identifyActor(req, res, next) {
   try {
     const auth = req.headers.authorization || req.headers.Authorization;
@@ -14,6 +13,8 @@ export default async function identifyActor(req, res, next) {
     const token = auth.split(" ")[1];
     let payload;
     try {
+      
+      
       payload = jwt.verify(token, JWT_SECRET);
     } catch (err) {
       return res.status(401).json({ status: "failed", message: "Invalid or expired token." });
