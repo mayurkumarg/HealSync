@@ -1,6 +1,8 @@
 // backend/controllers/formEntry/createFormEntry.js
 import FormEntry from "../../models/formEntryModel.js";
 import PatientAccess from "../../models/hospital/patientAccessModel.js";
+import userModel from "../../models/userModel.js";
+import { notifyDoctorFormEntry } from "../../service/email.js";
 
 /**
  * Creates a new form entry.
@@ -36,10 +38,23 @@ export default async function createFormEntry(req, res) {
         expiresAt: { $gt: new Date() },
       });
 
+  
+
+      
+
       // Check if access exists and has sufficient permissions
       if (access && ["edit", "full"].includes(access.accessType)) {
         canCreate = true;
       }
+
+      
+      const userDetails = await userModel.findById(patientId);
+
+
+      // notifyForm(doctor=actor.doc, patient=userDetails);
+      //notify user that doctor has created a form entry for them
+      notifyDoctorFormEntry(actor.doc, userDetails,req.body,"Prescription");
+
     }
 
 

@@ -476,7 +476,92 @@ const sendDrugRefillReminderEmail = async (userId, type, doc) => {
   }
 };
 
+const notifyDoctorFormEntry = async (doctor, user, form, documentName = "Medical Form") => {
+  try {
+    const name = user.name;
+    const toEmail = user.email;
+
+    const formType = form.formType || "Unknown";
+    const formData = form.data || {};
+
+    const subject = `New ${documentName} uploaded by Dr. ${doctor.name}`;
+
+    /* ---------------------------------------
+     * Convert form.data key/value → HTML list
+     * --------------------------------------*/
+    const generateFormDetails = (data) => {
+      return Object.entries(data)
+        .map(
+          ([key, value]) =>
+            `<li><strong>${key.replace(/([A-Z])/g, " $1")}</strong>: ${value}</li>`
+        )
+        .join("");
+    };
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${documentName} Uploaded</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f7fa; font-family: Arial, sans-serif; }
+    .container { max-width: 600px; margin: auto; background: #ffffff; padding: 25px; border-radius: 12px;
+                 box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+    h1 { color: #2563eb; font-size: 22px; margin-bottom: 12px; }
+    p { color: #444; font-size: 15px; line-height: 1.6; }
+    .info-box { background: #f0f4ff; padding: 18px; border-radius: 6px; margin: 20px 0; }
+    ul { padding-left: 18px; }
+    li { margin: 6px 0; font-size: 15px; }
+    .footer { margin-top: 28px; text-align: center; color: #777; font-size: 12px; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Hello ${name},</h1>
+
+    <p>Your doctor <strong>${doctor.name}</strong> has submitted a new medical form for you.</p>
+
+    <div class="info-box">
+      <p><strong>Form Type:</strong> ${formType}</p>
+      <p><strong>Uploaded By:</strong> Dr. ${doctor.name}</p>
+
+      <p><strong>Form Details:</strong></p>
+      <ul>
+        ${generateFormDetails(formData)}
+      </ul>
+    </div>
+
+    <p>Please open your HealSync app to review the complete form details.</p>
+
+    <div class="footer">
+      Stay healthy 💙<br/>
+      HealSync — Smart Health Monitoring<br/>
+      © ${new Date().getFullYear()} HealSync
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+    const info = await transporter.sendMail({
+      from: '"HealSync Alerts" <no-reply@healsync.com>',
+      to: toEmail,
+      subject,
+      html,
+    });
+
+    return { success: true, info };
+
+  } catch (error) {
+    console.error("Notify Doctor Form Entry Email Failed:", error);
+    return { success: false, error: error.message || error };
+  }
+};
+
+
 
 
 export default mail;
-export { mailForgotPassword, sendReminderEmail,mail,sendDrugRefillReminderEmail };
+export { mailForgotPassword, sendReminderEmail,mail,sendDrugRefillReminderEmail,notifyDoctorFormEntry };

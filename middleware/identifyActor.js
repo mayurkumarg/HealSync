@@ -33,7 +33,7 @@ export default async function identifyActor(req, res, next) {
     }
 
     // Try Doctor
-    actorDoc = await Doctor.findById(userId).select("+password +token");
+    actorDoc = await Doctor.findById(userId).populate("hospitalId").select("+password +token");
     if (actorDoc) {
       req.actor = { type: "doctor", doc: actorDoc };
       return next();

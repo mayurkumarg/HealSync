@@ -15,17 +15,35 @@ const { Types } = mongoose;
 export default async function claimAccess(req, res) {
   try {
     const actor = req.actor;
-    if (!actor || actor.type.toLowerCase() !== "doctor") return res.status(401).json({ status: "failed", message: "Only doctors may claim access with this endpoint." });
+    if (!actor || actor.type.toLowerCase() !== "doctor")
+      return res
+        .status(401)
+        .json({
+          status: "failed",
+          message: "Only doctors may claim access with this endpoint.",
+        });
 
     const { token, shortCode } = req.body;
-    if (!token && !shortCode) return res.status(400).json({ status: "failed", message: "token or shortCode required." });
+    if (!token && !shortCode)
+      return res
+        .status(400)
+        .json({ status: "failed", message: "token or shortCode required." });
 
     const filter = token ? { token } : { shortCode };
     const accessToken = await AccessToken.findOne(filter);
-    if (!accessToken) return res.status(404).json({ status: "failed", message: "Access token not found." });
+    if (!accessToken)
+      return res
+        .status(404)
+        .json({ status: "failed", message: "Access token not found." });
 
-    if (accessToken.used) return res.status(410).json({ status: "failed", message: "This code was already used." });
-    if (new Date() > accessToken.expiresAt) return res.status(410).json({ status: "failed", message: "This code has expired." });
+    if (accessToken.used)
+      return res
+        .status(410)
+        .json({ status: "failed", message: "This code was already used." });
+    if (new Date() > accessToken.expiresAt)
+      return res
+        .status(410)
+        .json({ status: "failed", message: "This code has expired." });
 
     // Create or upsert PatientAccess
     const patientId = accessToken.patientId;
@@ -39,13 +57,13 @@ export default async function claimAccess(req, res) {
       {
         $setOnInsert: {
           hospitalId: actor.doc.hospitalId || null,
-          grantedBy: patientId // granted by patient (the token creator)
+          grantedBy: patientId, // granted by patient (the token creator)
         },
         $set: {
           accessType: accessToken.accessType,
           expiresAt,
-          isActive: true
-        }
+          isActive: true,
+        },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
@@ -57,6 +75,8 @@ export default async function claimAccess(req, res) {
     return res.status(200).json({ status: "success", data: pa });
   } catch (err) {
     console.error("claimAccess:", err);
-    return res.status(500).json({ status: "error", message: "Could not claim access." });
+    return res
+      .status(500)
+      .json({ status: "error", message: "Could not claim access." });
   }
 }
