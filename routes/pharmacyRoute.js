@@ -23,7 +23,7 @@ import {
   updateInventory,
   getPharmacyById,
 } from "../controllers/pharmacy/locationController.js";
-
+import { getAllStats } from "../controllers/pharmacy/functionality/stats.js";
 
 const pharmacyRouter = Router();
 
@@ -45,6 +45,8 @@ pharmacyRouter.get("/search-medicine", searchByMedicine);
 pharmacyRouter.get("/filter", filterPharmacies);
 pharmacyRouter.put("/:id/inventory", updateInventory);
 pharmacyRouter.get("/:id", getPharmacyById);
+
+pharmacyRouter.get("/stock/stats", pharmacyAuth, getAllStats);
 
 pharmacyRouter.post("/stock", pharmacyAuth, registerStock);
 pharmacyRouter.patch("/stock/:stockId", pharmacyAuth, updateStock);

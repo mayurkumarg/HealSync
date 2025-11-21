@@ -22,7 +22,7 @@ const pharmacyAuth = handelAsyncFunction(async (req, res, next) => {
   // Verify JWT
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.SECRECT_CODE);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
     return next(new CustomError(401, "Invalid or expired token."));
   }
