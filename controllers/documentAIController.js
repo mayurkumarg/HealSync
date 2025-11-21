@@ -36,7 +36,10 @@ export async function ocrSpaceFile(filePath) {
     form.append("file", fs.createReadStream(filePath));
 
     const url = process.env.OCR_URL || "https://api.ocr.space/parse/image";
-    const r = await axios.post(url, form, { headers: form.getHeaders(), timeout: 120000 });
+    const r = await axios.post(url, form, {
+      headers: form.getHeaders(),
+      timeout: 120000,
+    });
     return r.data;
   } catch (err) {
     console.error("OCR error:", err?.message || err);
@@ -49,15 +52,21 @@ function fallbackParseTextToFields(text) {
   const out = {};
   const lower = (text || "").toLowerCase();
   if (lower.includes("diabetes")) out.diagnoses = ["Diabetes"];
-  if (lower.includes("hba1c") || lower.includes("hb a1c")) out.labs = out.labs || {}, out.labs.hba1c = (text.match(/hb.?a1c[:\s]*([0-9.]+)/i) || [])[1] || null;
-  if (lower.includes("bp") || lower.includes("blood pressure")) out.vitals = { bp: "mentioned" };
-  if (lower.includes("tablet") || lower.includes("mg")) out.medications = ["Medication (detected)"];
+  if (lower.includes("hba1c") || lower.includes("hb a1c"))
+    (out.labs = out.labs || {}),
+      (out.labs.hba1c =
+        (text.match(/hb.?a1c[:\s]*([0-9.]+)/i) || [])[1] || null);
+  if (lower.includes("bp") || lower.includes("blood pressure"))
+    out.vitals = { bp: "mentioned" };
+  if (lower.includes("tablet") || lower.includes("mg"))
+    out.medications = ["Medication (detected)"];
   return out;
 }
 
 /* LLM-based document type classifier */
 async function classifyMedicalDocumentAI(text) {
-  if (!text || text.trim().length < 20) return { isMedical: false, type: "non_medical" };
+  if (!text || text.trim().length < 20)
+    return { isMedical: false, type: "non_medical" };
 
   const prompt = `
 You are an expert in medical document classification. Read the OCR text and return JSON only with these keys:
@@ -87,18 +96,34 @@ async function generateSummary(text) {
 }
 
 /* Main process */
-export async function processDocumentAI({ patientId, uploadedBy, filePath, fileName, fileType }) {
+export async function processDocumentAI({
+  patientId,
+  uploadedBy,
+  filePath,
+  fileName,
+  fileType,
+}) {
   // 1. OCR
   const ocrResp = await ocrSpaceFile(filePath);
-  const parsedText = ocrResp?.ParsedResults?.[0]?.ParsedText ? cleanText(ocrResp.ParsedResults[0].ParsedText) : "";
+  const parsedText = ocrResp?.ParsedResults?.[0]?.ParsedText
+    ? cleanText(ocrResp.ParsedResults[0].ParsedText)
+    : "";
 
   // 2. Classification
   const docClass = await classifyMedicalDocumentAI(parsedText);
 
   // If not medical -> remove file and return rejection
   if (!docClass.isMedical) {
-    try { fs.unlinkSync(filePath); } catch (e) {}
-    return { ok: false, isMedical: false, type: docClass.type, message: "Not a medical-related document", parsedText };
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {}
+    return {
+      ok: false,
+      isMedical: false,
+      type: docClass.type,
+      message: "Not a medical-related document",
+      parsedText,
+    };
   }
 
   // 3. NLP extraction (fallback)
@@ -117,7 +142,13 @@ export async function processDocumentAI({ patientId, uploadedBy, filePath, fileN
     fileType: normalizeFileType(fileType),
     uploadedAt: new Date(),
     ocr: { text: parsedText, ocrEngine: "OCR.space", processedAt: new Date() },
-    nlp: { entities: parsedFields, keyValues: parsedFields, summary, modelVersion: "v1", processedAt: new Date() },
+    nlp: {
+      entities: parsedFields,
+      keyValues: parsedFields,
+      summary,
+      modelVersion: "v1",
+      processedAt: new Date(),
+    },
     indexedKeywords: parsedFields.medications || [],
   });
 
@@ -139,5 +170,13 @@ export async function processDocumentAI({ patientId, uploadedBy, filePath, fileN
     sentAt: new Date(),
   });
 
-  return { ok: true, isMedical: true, type: docClass.type, stored, parsedText, parsedFields, summary };
+  return {
+    ok: true,
+    isMedical: true,
+    type: docClass.type,
+    stored,
+    parsedText,
+    parsedFields,
+    summary,
+  };
 }

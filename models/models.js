@@ -118,7 +118,7 @@ const medicalDocumentSchema = new Schema({
       "medical_certificate",
       "hospital_bill",
       "other_medical_document",
-      "update"
+      "update",
     ],
     required: true,
   },
