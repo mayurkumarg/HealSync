@@ -1,5 +1,7 @@
 // models.js
 import mongoose from "mongoose";
+import { encryptMedicalRecord, decryptMedicalRecord, createHash } from "../utils/encryption.js";
+
 const { Schema, model } = mongoose;
 
 /* ---------- PATIENT ---------- */
@@ -151,7 +153,127 @@ const medicalDocumentSchema = new Schema({
   ocr: ocrExtractionSchema,
   nlp: nlpExtractionSchema,
   indexedKeywords: [String],
+  
+  // Encryption fields
+  isEncrypted: { type: Boolean, default: false },
+  ocrHash: { type: String, default: null },
+  nlpHash: { type: String, default: null },
 });
+
+// Encrypt OCR and NLP data before saving
+medicalDocumentSchema.pre("save", function (next) {
+  // Encrypt OCR text if exists and not already encrypted
+  if (this.ocr && this.ocr.text && !this.isEncrypted) {
+    try {
+      const encryptedOCR = encryptMedicalRecord({ text: this.ocr.text });
+      this.ocr.text = encryptedOCR.text;
+      this.ocrHash = encryptedOCR._integrity;
+      console.log('[ENCRYPTION] OCR text encrypted for document:', this._id);
+    } catch (error) {
+      console.error('[ENCRYPTION] Failed to encrypt OCR text:', error);
+    }
+  }
+
+  // Encrypt NLP entities and summary if exists
+  if (this.nlp && !this.isEncrypted) {
+    try {
+      const nlpData = {
+        entities: this.nlp.entities,
+        keyValues: this.nlp.keyValues,
+        summary: this.nlp.summary
+      };
+      
+      const encryptedNLP = encryptMedicalRecord(nlpData);
+      this.nlp.entities = encryptedNLP.entities;
+      this.nlp.keyValues = encryptedNLP.keyValues;
+      this.nlp.summary = encryptedNLP.summary;
+      this.nlpHash = encryptedNLP._integrity;
+      console.log('[ENCRYPTION] NLP data encrypted for document:', this._id);
+    } catch (error) {
+      console.error('[ENCRYPTION] Failed to encrypt NLP data:', error);
+    }
+  }
+
+  if (this.ocr || this.nlp) {
+    this.isEncrypted = true;
+  }
+
+  next();
+});
+
+// Decrypt OCR and NLP data after finding
+medicalDocumentSchema.post('find', function(docs) {
+  if (Array.isArray(docs)) {
+    docs.forEach(doc => {
+      if (doc.isEncrypted) {
+        // Decrypt OCR text
+        if (doc.ocr && doc.ocr.text) {
+          try {
+            const decryptedOCR = decryptMedicalRecord({ 
+              text: doc.ocr.text, 
+              _integrity: doc.ocrHash 
+            });
+            doc.ocr.text = decryptedOCR.text;
+          } catch (error) {
+            console.error('[DECRYPTION] Failed to decrypt OCR text:', error);
+          }
+        }
+
+        // Decrypt NLP data
+        if (doc.nlp) {
+          try {
+            const decryptedNLP = decryptMedicalRecord({
+              entities: doc.nlp.entities,
+              keyValues: doc.nlp.keyValues,
+              summary: doc.nlp.summary,
+              _integrity: doc.nlpHash
+            });
+            doc.nlp.entities = decryptedNLP.entities;
+            doc.nlp.keyValues = decryptedNLP.keyValues;
+            doc.nlp.summary = decryptedNLP.summary;
+          } catch (error) {
+            console.error('[DECRYPTION] Failed to decrypt NLP data:', error);
+          }
+        }
+      }
+    });
+  }
+});
+
+medicalDocumentSchema.post('findOne', function(doc) {
+  if (doc && doc.isEncrypted) {
+    // Decrypt OCR text
+    if (doc.ocr && doc.ocr.text) {
+      try {
+        const decryptedOCR = decryptMedicalRecord({ 
+          text: doc.ocr.text, 
+          _integrity: doc.ocrHash 
+        });
+        doc.ocr.text = decryptedOCR.text;
+      } catch (error) {
+        console.error('[DECRYPTION] Failed to decrypt OCR text:', error);
+      }
+    }
+
+    // Decrypt NLP data
+    if (doc.nlp) {
+      try {
+        const decryptedNLP = decryptMedicalRecord({
+          entities: doc.nlp.entities,
+          keyValues: doc.nlp.keyValues,
+          summary: doc.nlp.summary,
+          _integrity: doc.nlpHash
+        });
+        doc.nlp.entities = decryptedNLP.entities;
+        doc.nlp.keyValues = decryptedNLP.keyValues;
+        doc.nlp.summary = decryptedNLP.summary;
+      } catch (error) {
+        console.error('[DECRYPTION] Failed to decrypt NLP data:', error);
+      }
+    }
+  }
+});
+
 medicalDocumentSchema.index({ patientId: 1, uploadedAt: -1 });
 export const MedicalDocument = model("MedicalDocument", medicalDocumentSchema);
 
