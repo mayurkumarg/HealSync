@@ -12,7 +12,12 @@ const patientAccessSchema = new Schema(
       enum: ["view", "edit", "full"],
       default: "view",
     },
-    expiresAt: { type: Date, default: null },
+    expiryDuration: {
+      type: String,
+      enum: ["1hour", "6hours", "12hours", "24hours", "3days", "7days", "30days", "until_revoked"],
+      default: "24hours"
+    },
+    expiresAt: { type: Date, default: null }, // null means until_revoked
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

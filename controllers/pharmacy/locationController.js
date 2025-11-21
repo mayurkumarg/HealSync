@@ -103,17 +103,23 @@ export const filterPharmacies = handelAsyncFunction(async (req, res, next) => {
 });
 
 /**
- * PUT /api/pharmacy/:id/inventory
+ * PUT /api/pharmacy/inventory
  * Body: { medicines: [{ name, brand, price, stock }, ...] }
  * Upserts medicines by name (case-insensitive). Preserves other fields.
+ * PROTECTED: Uses req.user.id from pharmacyAuth middleware
  */
 export const updateInventory = handelAsyncFunction(async (req, res, next) => {
-  const { id } = req.params;
+  const pharmacyId = req.user?.id; // from JWT middleware
+  
+  if (!pharmacyId) {
+    return next(new CustomError(401, "Unauthorized. Please login."));
+  }
+  
   const { medicines } = req.body;
 
   if (!Array.isArray(medicines)) return next(new CustomError(400, "medicines array required in body"));
 
-  const pharmacy = await Pharmacy.findById(id);
+  const pharmacy = await Pharmacy.findById(pharmacyId);
   if (!pharmacy) return next(new CustomError(404, "Pharmacy not found"));
 
   medicines.forEach((m) => {

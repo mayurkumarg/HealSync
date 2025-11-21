@@ -4,7 +4,7 @@ import Pharmacy from "../../models/medical/pharmacy.js";
 
 /**
  * @desc   Update pharmacy profile
- * @route  PATCH /api/pharmacy/update
+ * @route  PATCH /api/pharmacy/profile
  * @access Pharmacy (protected)
  */
 const updatePharmacy = handelAsyncFunction(async (req, res, next) => {

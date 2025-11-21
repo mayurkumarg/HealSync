@@ -1,6 +1,7 @@
 // backend/controllers/access/claimAccess.js
 import AccessToken from "../../models/AccessToken.js";
 import PatientAccess from "../../models/hospital/patientAccessModel.js"; // existing file
+import { logAccessActivity } from "../../utils/activityLogger.js";
 import mongoose from "mongoose";
 
 const { Types } = mongoose;
@@ -36,11 +37,12 @@ export default async function claimAccess(req, res) {
         .status(404)
         .json({ status: "failed", message: "Access token not found." });
 
-    if (accessToken.used)
+    if (accessToken.used) 
       return res
         .status(410)
         .json({ status: "failed", message: "This code was already used." });
-    if (new Date() > accessToken.expiresAt)
+    
+    if (accessToken.expiresAt && new Date() > accessToken.expiresAt) 
       return res
         .status(410)
         .json({ status: "failed", message: "This code has expired." });
@@ -49,8 +51,8 @@ export default async function claimAccess(req, res) {
     const patientId = accessToken.patientId;
     const doctorId = actor.doc._id;
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // default 15 minutes; you could derive from token
+    // Use the token's expiry duration for the access
+    let accessExpiresAt = accessToken.expiresAt; // Use token's expiry or null if until_revoked
 
     const pa = await PatientAccess.findOneAndUpdate(
       { patientId, doctorId },
@@ -61,16 +63,34 @@ export default async function claimAccess(req, res) {
         },
         $set: {
           accessType: accessToken.accessType,
-          expiresAt,
-          isActive: true,
-        },
+          expiresAt: accessExpiresAt,
+          expiryDuration: accessToken.expiryDuration,
+          isActive: true
+        }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Mark token used
+    // Mark token used and claimed
     accessToken.used = true;
+    accessToken.claimedBy = doctorId;
+    accessToken.claimedAt = new Date();
     await accessToken.save();
+
+    // Log this access grant activity
+    await logAccessActivity({
+      patientId,
+      doctorId,
+      accessId: pa._id,
+      action: 'access_granted',
+      details: {
+        method: 'qr_code_scanned',
+        resourceType: 'access_token',
+        resourceId: accessToken._id,
+        shortCode: accessToken.shortCode
+      },
+      req
+    });
 
     return res.status(200).json({ status: "success", data: pa });
   } catch (err) {

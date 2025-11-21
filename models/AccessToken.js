@@ -20,13 +20,25 @@ const accessTokenSchema = new Schema(
     token: { type: String, required: true, unique: true },
     patientId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     purpose: { type: String, enum: ["grant", "request"], default: "grant" },
+    
+    // Permission type
     accessType: {
       type: String,
       enum: ["view", "edit", "full"],
       default: "view",
     },
-    expiresAt: { type: Date, required: true },
+    
+    // Expiry configuration
+    expiryDuration: {
+      type: String,
+      enum: ["1hour", "6hours", "12hours", "24hours", "3days", "7days", "30days", "until_revoked"],
+      default: "24hours"
+    },
+    expiresAt: { type: Date, required: false }, // null if until_revoked
+    
     used: { type: Boolean, default: false },
+    claimedBy: { type: Schema.Types.ObjectId, ref: "Doctor", default: null },
+    claimedAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

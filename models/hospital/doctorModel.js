@@ -8,6 +8,20 @@ const doctorSchema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, select: false },
+  phone_no: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    trim: true,
+    minlength: 10,
+    maxlength: 15,
+    validate: {
+      validator: function (v) {
+        return /^\d+$/.test(v);
+      },
+      message: "Phone number should contain only digits."
+    }
+  },
 
   hospitalId: { type: Schema.Types.ObjectId, ref: "Hospital", default: null }, // null => independent
   specialization: { type: String, default: null },

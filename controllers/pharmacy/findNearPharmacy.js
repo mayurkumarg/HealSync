@@ -30,7 +30,7 @@ const getNearbyPharmacies = handelAsyncFunction(async (req, res, next) => {
         $maxDistance: maxDistance,
       },
     },
-  }).select("name address contactNo rating isOpen geoLocation verification.licenseNo");
+  }).select("name address contactNo rating isOpen geoLocation verification openingHours");
 
   //  If no results
   if (!pharmacies.length) {

@@ -27,35 +27,44 @@ import { getAllStats } from "../controllers/pharmacy/functionality/stats.js";
 
 const pharmacyRouter = Router();
 
-pharmacyRouter.post("/",createPharmacy);
-pharmacyRouter.get("/verify/:token",verifyPharmacyEmail);
-pharmacyRouter.post("/login",loginPharmacy);
+// ============= PUBLIC ROUTES (No Auth) =============
+// Registration & Email Verification
+pharmacyRouter.post("/", createPharmacy);
+pharmacyRouter.get("/verify/:token", verifyPharmacyEmail);
 
+// Login
+pharmacyRouter.post("/login", loginPharmacy);
 
-pharmacyRouter.post("/forgot-password",forgotPasswordPharmacy);
-pharmacyRouter.get("/reset-password/:token",passwordResetClientPharmacy);
-pharmacyRouter.post("/reset-password/:token",passwordResetServerPharmacy);
+// Password Reset Flow
+pharmacyRouter.post("/forgot-password", forgotPasswordPharmacy);
+pharmacyRouter.get("/reset-password/:token", passwordResetClientPharmacy);
+pharmacyRouter.post("/reset-password/:token", passwordResetServerPharmacy);
 
-pharmacyRouter.get("/nearby", getNearbyPharmacies);
-pharmacyRouter.patch("/:pharmacyId", pharmacyAuth,updatePharmacy);
-
-// geolocation & inventory routes
+// Public Pharmacy Search (for patients/users)
 pharmacyRouter.get("/nearby", getNearbyPharmacies);
 pharmacyRouter.get("/search-medicine", searchByMedicine);
 pharmacyRouter.get("/filter", filterPharmacies);
-pharmacyRouter.put("/:id/inventory", updateInventory);
-pharmacyRouter.get("/:id", getPharmacyById);
+pharmacyRouter.get("/pharmacy/:id", getPharmacyById); // Renamed to avoid conflict
 
+// ============= PROTECTED ROUTES (Pharmacy Auth Required) =============
+// Pharmacy Profile Management
+pharmacyRouter.patch("/profile", pharmacyAuth, updatePharmacy); // Fixed: removed unused param
+pharmacyRouter.put("/inventory", pharmacyAuth, updateInventory); // Fixed: secured + removed :id param
+
+// Stock Management - Stats route
 pharmacyRouter.get("/stock/stats", pharmacyAuth, getAllStats);
 
-pharmacyRouter.post("/stock", pharmacyAuth, registerStock);
-pharmacyRouter.patch("/stock/:stockId", pharmacyAuth, updateStock);
-pharmacyRouter.delete("/stock/:stockId", pharmacyAuth, deleteStock);
-pharmacyRouter.get("/stock",pharmacyAuth,getAllStock)
-pharmacyRouter.get("/stock/:stockId",pharmacyAuth,getStockItem);
+// Stock Management - Specific routes BEFORE parameterized routes
 pharmacyRouter.get("/stock/search", pharmacyAuth, searchStock);
 pharmacyRouter.get("/stock/nearest", pharmacyAuth, findNearest);
 pharmacyRouter.get("/stock/low", pharmacyAuth, lowStock);
 pharmacyRouter.get("/stock/expiry", pharmacyAuth, expiryAlert);
+pharmacyRouter.get("/stock", pharmacyAuth, getAllStock);
+pharmacyRouter.post("/stock", pharmacyAuth, registerStock);
+
+// Parameterized stock routes MUST come AFTER specific routes
+pharmacyRouter.get("/stock/:stockId", pharmacyAuth, getStockItem);
+pharmacyRouter.patch("/stock/:stockId", pharmacyAuth, updateStock);
+pharmacyRouter.delete("/stock/:stockId", pharmacyAuth, deleteStock);
 
 export default pharmacyRouter;

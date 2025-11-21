@@ -233,7 +233,7 @@ export const getReminderStats = asyncFunctionHandler(async (req, res, next) => {
   const userId = req.user._id;
 
   const stats = await Reminder.aggregate([
-    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
     {
       $group: {
         _id: "$status",
@@ -243,7 +243,7 @@ export const getReminderStats = asyncFunctionHandler(async (req, res, next) => {
   ]);
 
   const typeStats = await Reminder.aggregate([
-    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
     {
       $group: {
         _id: "$reminderType",
@@ -252,8 +252,25 @@ export const getReminderStats = asyncFunctionHandler(async (req, res, next) => {
     },
   ]);
 
+  // Transform stats into expected format
+  const statusMap = {
+    total: 0,
+    pending: 0,
+    completed: 0,
+    dismissed: 0
+  };
+
+  // Count total and group by status
+  stats.forEach(stat => {
+    statusMap.total += stat.count;
+    if (stat._id === 'pending') statusMap.pending = stat.count;
+    if (stat._id === 'completed') statusMap.completed = stat.count;
+    if (stat._id === 'dismissed') statusMap.dismissed = stat.count;
+  });
+
   res.status(200).json({
     success: true,
+    data: statusMap,
     statusStats: stats,
     typeStats: typeStats,
   });

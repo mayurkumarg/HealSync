@@ -232,9 +232,10 @@ const aiChatSessionSchema = new Schema({
   patientId: { type: Schema.Types.ObjectId, ref: "Patient", required: true },
   initiatedByUserId: { type: Schema.Types.ObjectId, ref: "User" },
   promptSnapshot: String,
+  response: String,
   modelUsed: String,
   startedAt: { type: Date, default: Date.now },
   endedAt: Date,
-  status: { type: String, enum: ["active", "completed"], default: "active" },
+  status: { type: String, enum: ["active", "completed", "failed", "timeout"], default: "active" },
 });
 export const AIChatSession = model("AIChatSession", aiChatSessionSchema);

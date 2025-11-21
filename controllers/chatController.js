@@ -86,16 +86,18 @@ function filterFormEntries(formEntries, intent) {
 --------------------------------------------------------- */
 function buildContextBlock({ docs, formEntries, patient, meds }) {
 
-  const docBlock = docs.map((d, i) => `
+  const docBlock = docs.map((d, i) => {
+    // Limit OCR text to first 1000 chars to prevent huge prompts
+    const ocrText = (d.ocr?.text || "").substring(0, 1000);
+    return `
 === DOCUMENT ${i+1} ===
 Type: ${d.type}
 Date: ${d.uploadedAt}
-OCR:
-${d.ocr?.text || ""}
-Summary:
-${d.nlp?.summary || ""}
+OCR: ${ocrText}${(d.ocr?.text || "").length > 1000 ? "...(truncated)" : ""}
+Summary: ${d.nlp?.summary || ""}
 === END DOCUMENT ===
-`).join("\n");
+`;
+  }).join("\n");
 
   const formBlock = formEntries.map((f, i) => `
 === FORM ENTRY ${i+1} ===
@@ -130,7 +132,15 @@ Notes: ${m.notes}
 --------------------------------------------------------- */
 export async function handleChat(req, res) {
   try {
-    const { patientId, userId, question } = req.body;
+    const { question } = req.body;
+    
+    // Get user from authorization middleware
+    const patientId = req.user._id.toString();
+    const userId = req.user._id.toString();
+
+    console.log("\n========== AI CHAT SESSION START ==========");
+    console.log("Patient ID:", patientId);
+    console.log("Question:", question);
 
     const session = await AIChatSession.create({
       sessionId: Math.random().toString(36).slice(2, 10),
@@ -167,31 +177,61 @@ export async function handleChat(req, res) {
       meds
     });
 
-    // Build final prompt
-    const finalPrompt = `
-You are HealSync Medical AI.
+    console.log("\n[CHAT] Context prepared:");
+    console.log("- Documents:", relevantDocs.length);
+    console.log("- Form Entries:", relevantForm.length);
+    console.log("- Medications:", meds.length);
+    console.log("- Context size:", context.length, "characters");
 
-Use ONLY the relevant data below based on patient's question.
+    // Limit context size to prevent timeout (max ~5000 chars for faster processing)
+    let trimmedContext = context;
+    if (context.length > 5000) {
+      console.log("[CHAT] ⚠️  Context too large, trimming to 5000 characters");
+      trimmedContext = context.substring(0, 5000) + "\n...(context truncated for faster response)";
+    }
+
+    // Build final prompt
+    const finalPrompt = `You are HealSync Medical AI. Answer in 2-3 sentences maximum.
 
 CONTEXT:
-${context}
+${trimmedContext}
 
-QUESTION:
-${question}
+QUESTION: ${question}
 
-RESPONSE POLICY:
-- Use only related documents (topic filtering already applied)
-- If blood question → only blood data
-- If diabetes question → only diabetes data
-- Be short, precise, medically accurate
-- Use latest data first when unclear
+RULES:
+- Be extremely brief (2-3 sentences)
+- Use only the data provided above
+- If no relevant data, say "No data found"
     `;
+
+    console.log("[CHAT] Final prompt size:", finalPrompt.length, "characters");
 
     const answer = await callOllama(finalPrompt);
 
+    console.log("\n[LLM] AI Chat Response:");
+    console.log(answer);
+
+    // If no answer (Ollama failed), provide fallback
+    if (!answer || answer.trim() === "") {
+      console.error("[CHAT] ⚠️  No response from LLM, using fallback message");
+      const fallbackAnswer = "I'm sorry, I'm having trouble connecting to the AI service right now. Please make sure Ollama is running with 'ollama serve' and the llama3.1 model is installed with 'ollama pull llama3.1'. You can also check your medical records directly in the Documents section.";
+      
+      session.status = "timeout";
+      session.response = fallbackAnswer;
+      session.endedAt = new Date();
+      await session.save();
+      
+      console.log("========== AI CHAT SESSION END (TIMEOUT) ==========\n");
+      return res.json({ ok: true, answer: fallbackAnswer });
+    }
+
     session.status = "completed";
     session.response = answer;
+    session.endedAt = new Date();
     await session.save();
+
+    console.log("[✓] Chat session saved successfully");
+    console.log("========== AI CHAT SESSION END ==========\n");
 
     res.json({ ok: true, answer });
 

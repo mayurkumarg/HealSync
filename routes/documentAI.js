@@ -6,15 +6,18 @@ import upload from "../service/multer.js";
 import uploadToCloud from "../utils/uploadToCloud.js";
 import { processDocumentAI } from "../controllers/documentAIController.js";
 import { MedicalDocument } from "../models/models.js";
+import authorize from "../controllers/authorization.js";
 
 const router = express.Router();
 
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/upload", authorize, upload.single("file"), async (req, res) => {
   try {
     if (!req.file)
       return res.status(400).json({ ok: false, error: "file required" });
 
-    const { patientId, uploadedBy } = req.body;
+    // Get user from authorization middleware
+    const patientId = req.user._id.toString();
+    const uploadedBy = req.user._id.toString();
 
     if (!patientId || !uploadedBy) {
       return res.status(400).json({ ok: false, error: "patientId and uploadedBy required" });

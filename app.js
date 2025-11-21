@@ -19,6 +19,7 @@ import pharmacyRouter from "./routes/pharmacyRoute.js";
 import medicineRouter from "./routes/medicineRoute.js";   // KEEP this from main
 import hospitalRouter from "./routes/hospitalRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
+import doctorAccessRouter from "./routes/doctorAccessRoute.js";
 import formEntryRouter from "./routes/formEntryRoute.js";
 import accessRouter from "./routes/accessRoute.js";
 
@@ -77,6 +78,7 @@ app.get("/api/health", (req, res) =>
 
 app.use("/api/hospital", hospitalRouter);
 app.use("/api/doctor", doctorRouter);
+app.use("/api/doctor-access", doctorAccessRouter);
 
 app.use("/api/access", accessRouter);
 
