@@ -9,7 +9,7 @@ const patientAccessSchema = new Schema(
     grantedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     accessType: {
       type: String,
-      enum: ["view", "edit", "full"],
+      enum: ["view"],  // Only view access - allows viewing and uploading new data, but NOT editing
       default: "view",
     },
     expiryDuration: {

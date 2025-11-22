@@ -20,8 +20,9 @@ const requestAccessByDoctor = handelAsyncFunction(async (req, res, next) => {
     return next(new CustomError(400, "Patient phone number is required."));
   }
 
-  if (!['view', 'edit', 'full'].includes(accessType)) {
-    return next(new CustomError(400, "Invalid access type."));
+  // Only view access is supported (allows viewing and uploading new data)
+  if (accessType !== 'view') {
+    return next(new CustomError(400, "Only 'view' access type is supported. This allows doctors to view and upload new data."));
   }
 
   // Convert frontend duration format to backend format

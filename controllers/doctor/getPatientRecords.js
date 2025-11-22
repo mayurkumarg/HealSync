@@ -1,6 +1,10 @@
 import PatientAccess from "../../models/hospital/patientAccessModel.js";
 import User from "../../models/userModel.js";
 import FormEntry from "../../models/formEntryModel.js";
+import { MedicalDocument } from "../../models/models.js";
+import BPTracking from "../../models/bp.js";
+import SugarTracking from "../../models/sugar.js";
+import Reminder from "../../models/medical/reminder.js";
 import { logAccessActivity } from "../../utils/activityLogger.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
 import CustomError from "../../utils/customError.js";
@@ -38,10 +42,33 @@ const getPatientRecords = handelAsyncFunction(async (req, res, next) => {
     return next(new CustomError(404, "Patient not found."));
   }
 
-  // Fetch health forms
+  // Fetch health forms with creator info
   const healthForms = await FormEntry.find({ patientId })
+    .populate('createdBy', 'name email')
     .sort({ createdAt: -1 })
     .limit(50)
+    .lean();
+
+  // Fetch medical documents
+  const documents = await MedicalDocument.find({ patientId })
+    .sort({ uploadedAt: -1 })
+    .limit(50)
+    .lean();
+
+  // Fetch BP readings
+  const bpData = await BPTracking.findOne({ userId: patientId })
+    .select('-__v')
+    .lean();
+
+  // Fetch Sugar readings
+  const sugarData = await SugarTracking.findOne({ userId: patientId })
+    .select('-__v')
+    .lean();
+
+  // Fetch Reminders
+  const reminders = await Reminder.find({ userId: patientId })
+    .sort({ reminderDateTime: -1 })
+    .limit(20)
     .lean();
 
   // Log this activity
@@ -62,12 +89,18 @@ const getPatientRecords = handelAsyncFunction(async (req, res, next) => {
     data: {
       patient,
       healthForms,
+      documents,
+      bpData: bpData || null,
+      sugarData: sugarData || null,
+      reminders: reminders || [],
       accessInfo: {
-        accessType: access.accessType,
+        accessType: 'view',
         expiresAt: access.expiresAt,
         grantedAt: access.createdAt,
-        canEdit: ['edit', 'full'].includes(access.accessType),
-        canDelete: access.accessType === 'full'
+        canView: true,
+        canUpload: true,
+        canEdit: false,
+        canDelete: false
       }
     }
   });

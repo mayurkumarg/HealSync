@@ -25,9 +25,9 @@ export default async function generateAccessToken(req, res) {
     const patientId = actor.doc._id;
     const { accessType = "view", expiryDuration = "24hours" } = req.body;
 
-    // Validate accessType
-    if (!["view", "edit", "full"].includes(accessType)) {
-      return res.status(400).json({ status: "failed", message: "Invalid accessType. Must be view, edit, or full." });
+    // Only view access is supported (allows viewing and uploading new data)
+    if (accessType !== "view") {
+      return res.status(400).json({ status: "failed", message: "Only 'view' access type is supported. This allows doctors to view and upload new data." });
     }
 
     // Validate expiryDuration
@@ -81,11 +81,12 @@ export default async function generateAccessToken(req, res) {
         expiryDuration: at.expiryDuration,
         url,
         qrDataUrl,
-        accessType: at.accessType,
+        accessType: "view",
         permissions: {
           view: true,
-          edit: ["edit", "full"].includes(at.accessType),
-          full: at.accessType === "full"
+          upload: true,
+          edit: false,
+          delete: false
         }
       }
     });

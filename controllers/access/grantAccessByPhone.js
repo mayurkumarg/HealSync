@@ -24,8 +24,9 @@ export default async function grantAccessByPhone(req, res) {
       return res.status(400).json({ status: "failed", message: "Doctor's phone number is required." });
     }
 
-    if (!['view', 'edit', 'full'].includes(accessType)) {
-      return res.status(400).json({ status: "failed", message: "Invalid access type." });
+    // Only view access is supported
+    if (accessType !== 'view') {
+      return res.status(400).json({ status: "failed", message: "Only 'view' access is supported. This allows doctors to view and upload new data." });
     }
 
     // Find doctor by phone

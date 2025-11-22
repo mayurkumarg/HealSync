@@ -7,7 +7,7 @@ import { notifyDoctorFormEntry } from "../../service/email.js";
 /**
  * Creates a new form entry.
  * - If actor is a patient, they can create for themselves.
- * - If actor is a doctor, they must have 'edit' or 'full' access granted via PatientAccess.
+ * - If actor is a doctor, they must have 'view' access granted via PatientAccess (allows viewing and uploading).
  *
  * Body: { patientId, formType, data, ... }
  */
@@ -44,19 +44,17 @@ export default async function createFormEntry(req, res) {
         patientId: patientId,
         doctorId: actor.doc._id,
         isActive: true,
-        expiresAt: { $gt: new Date() },
       });
 
-  
+      // Check expiry if expiresAt is set
+      const isExpired = access?.expiresAt && new Date() > new Date(access.expiresAt);
 
-      
-
-      // Check if access exists and has sufficient permissions
-      if (access && ["edit", "full"].includes(access.accessType)) {
+      // Check if access exists and is not expired (view access allows uploading new data)
+      if (access && !isExpired) {
         canCreate = true;
-        console.log('[FORM ENTRY] ✓ Doctor has access');
+        console.log('[FORM ENTRY] ✓ Doctor has view access - can upload new forms');
       } else {
-        console.log('[FORM ENTRY] ✗ Doctor lacks access');
+        console.log('[FORM ENTRY] ✗ Doctor lacks access or access expired');
       }
 
       

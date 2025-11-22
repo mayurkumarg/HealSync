@@ -26,32 +26,12 @@ export default async function updateFormEntry(req, res) {
       return res.status(200).json({ status: "success", data: entry });
     }
 
-    // Actor is Doctor
+    // Actor is Doctor - NOT ALLOWED to update existing entries
     if (actor.type === "doctor") {
-      if (entry.createdBy.toString() === actor.doc._id.toString() && entry.creatorModel === "Doctor") {
-        Object.assign(entry, updates);
-        await entry.save();
-        return res.status(200).json({ status: "success", data: entry });
-      }
-
-      const access = await PatientAccess.findOne({
-        patientId: new ObjectId(entry.patientId),
-        doctorId: actor.doc._id,
-        isActive: true
+      return res.status(403).json({ 
+        status: "failed", 
+        message: "Doctors can only view and upload new data. Editing existing entries is not allowed." 
       });
-
-      if (!access) {
-        return res.status(403).json({ status: "failed", message: "Doctor does not have access to this patient." });
-      }
-
-      if (access.accessType === "edit" || access.accessType === "full") {
-        Object.assign(entry, updates);
-        entry.isVerifiedByDoctor = true;
-        await entry.save();
-        return res.status(200).json({ status: "success", data: entry });
-      }
-
-      return res.status(403).json({ status: "failed", message: "Doctor has view-only access and cannot update entries." });
     }
 
     return res.status(403).json({ status: "failed", message: "Unauthorized actor." });

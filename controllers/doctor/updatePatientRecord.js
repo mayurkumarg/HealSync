@@ -9,7 +9,7 @@ import CustomError from "../../utils/customError.js";
  * Doctor updates patient profile or health form
  * PATCH /api/doctor-access/patient/:patientId/update
  * Body: { type: 'profile' | 'form', data: {...}, formId?: '...' }
- * Requires edit or full access
+ * DEPRECATED: Doctors can only VIEW and UPLOAD new data, not edit existing records
  */
 const updatePatientRecord = handelAsyncFunction(async (req, res, next) => {
   const doctor = req.doctor;
@@ -40,10 +40,8 @@ const updatePatientRecord = handelAsyncFunction(async (req, res, next) => {
     return next(new CustomError(403, "Your access to this patient has expired."));
   }
 
-  // Check permissions - must have edit or full access
-  if (access.accessType === 'view') {
-    return next(new CustomError(403, "You only have view access. Edit permission required."));
-  }
+  // Doctors cannot edit existing data - only view and upload new data
+  return next(new CustomError(403, "Doctors can only view patient records and upload new data. Editing existing records is not allowed."));
 
   let updatedRecord;
   let changesMade = {};

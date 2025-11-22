@@ -24,29 +24,12 @@ export default async function deleteFormEntry(req, res) {
       return res.status(200).json({ status: "success", message: "Deleted." });
     }
 
-    // Doctor: can delete if they created or if they have 'full' access
+    // Doctor: NOT ALLOWED to delete entries (even if they created them)
     if (actor.type === "doctor") {
-      if (entry.createdBy.toString() === actor.doc._id.toString() && entry.creatorModel === "Doctor") {
-        await entry.deleteOne();
-        return res.status(200).json({ status: "success", message: "Deleted." });
-      }
-
-      const access = await PatientAccess.findOne({
-        patientId: new ObjectId(entry.patientId),
-        doctorId: actor.doc._id,
-        isActive: true
+      return res.status(403).json({ 
+        status: "failed", 
+        message: "Doctors cannot delete form entries. Only patients can delete their own data." 
       });
-
-      if (!access) {
-        return res.status(403).json({ status: "failed", message: "Doctor does not have access to this patient." });
-      }
-
-      if (access.accessType === "full") {
-        await entry.deleteOne();
-        return res.status(200).json({ status: "success", message: "Deleted." });
-      }
-
-      return res.status(403).json({ status: "failed", message: "Doctor lacks permission to delete this entry." });
     }
 
     return res.status(403).json({ status: "failed", message: "Unauthorized actor." });
