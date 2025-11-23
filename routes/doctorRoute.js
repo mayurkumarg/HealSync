@@ -5,6 +5,7 @@ import doctorLogin from "../controllers/authentication_hos_doc/doctorLogin.js";
 import doctorAuthorize from "../middleware/doctorAuthorize.js";
 import doctorForgotPassword from "../controllers/authentication_hos_doc/doctorForgotPassword.js";
 import doctorResetPassword from "../controllers/authentication_hos_doc/doctorResetPassword.js";
+import { handleDoctorChat } from "../controllers/doctor/doctorChatController.js";
 
 const router = express.Router();
 
@@ -27,5 +28,8 @@ router.get("/me", doctorAuthorize, (req, res) => {
   delete d.tokenExpires;
   res.status(200).send({ status: "success", data: d });
 });
+
+// AI Chat for Patient Data Summary
+router.post("/chat", doctorAuthorize, handleDoctorChat);
 
 export default router;
