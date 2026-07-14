@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Theme tokens — light is the default, .dark overrides. Values are    */
+/* space-separated RGB channels so Tailwind's `rgb(var(--x) / <a>)`    */
+/* alpha syntax works.                                                 */
+/* ------------------------------------------------------------------ */
+:root {
+  --bg: 248 250 252;
+  --surface: 255 255 255;
+  --surface-2: 241 245 249;
+  --fg: 15 23 42;
+  --muted: 241 245 249;
+  --muted-fg: 100 116 139;
+  --border: 226 232 240;
+  --input: 226 232 240;
+  --ring: 13 148 136;
+
+  --primary: 13 148 136;
+  --primary-fg: 255 255 255;
+  --primary-soft: 204 251 241;
+
+  --accent: 37 99 235;
+  --accent-fg: 255 255 255;
+  --accent-soft: 219 234 254;
+
+  --success: 22 163 74;
+  --success-fg: 255 255 255;
+  --success-soft: 220 252 231;
+
+  --warning: 217 119 6;
+  --warning-fg: 255 255 255;
+  --warning-soft: 254 243 199;
+
+  --danger: 220 38 38;
+  --danger-fg: 255 255 255;
+  --danger-soft: 254 226 226;
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 2 6 23;
+  --surface: 15 23 42;
+  --surface-2: 30 41 59;
+  --fg: 226 232 240;
+  --muted: 30 41 59;
+  --muted-fg: 148 163 184;
+  --border: 30 41 59;
+  --input: 51 65 85;
+  --ring: 45 212 191;
+
+  --primary: 45 212 191;
+  --primary-fg: 4 47 46;
+  --primary-soft: 19 78 74;
+
+  --accent: 96 165 250;
+  --accent-fg: 8 27 66;
+  --accent-soft: 30 58 138;
+
+  --success: 74 222 128;
+  --success-fg: 5 46 22;
+  --success-soft: 20 83 45;
+
+  --warning: 251 191 36;
+  --warning-fg: 69 26 3;
+  --warning-soft: 120 53 15;
+
+  --danger: 248 113 113;
+  --danger-fg: 69 10 10;
+  --danger-soft: 127 29 29;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--border));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Themed, minimal scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--muted-fg) / 0.25);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--muted-fg) / 0.4);
+    background-clip: content-box;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Reusable surface treatments */
+  .glass {
+    background: rgb(var(--surface) / 0.72);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+  .card-hover:hover {
+    @apply shadow-elevated -translate-y-0.5;
+  }
+
+  /* Subtle grid/dot background for hero sections */
+  .bg-grid {
+    background-image: radial-gradient(rgb(var(--muted-fg) / 0.14) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .animate-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--muted-fg) / 0.08),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+}
