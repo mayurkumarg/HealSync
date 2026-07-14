@@ -19,6 +19,7 @@ const patientAccessSchema = new Schema(
     },
     expiresAt: { type: Date, default: null }, // null means until_revoked
     isActive: { type: Boolean, default: true },
+    reason: { type: String, default: null }, // doctor's stated reason, for the OTP-request flow's audit trail
   },
   { timestamps: true }
 );

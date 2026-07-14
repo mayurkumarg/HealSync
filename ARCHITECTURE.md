@@ -168,18 +168,34 @@ with its own signup/verify/login/forgot-password/reset-password flow (`controlle
 `controllers/pharmacy/pharmacyAuthorizer.js`). `middleware/identifyActor.js` is a generic variant
 that tries `User` then `Doctor` for endpoints usable by either.
 
-**Doctor access to a patient's records** (the core permission model) has two flows:
+**Doctor access to a patient's records is one system with three grant methods.** Every method ends
+up writing the same `PatientAccess` record (`patientId`, `doctorId`, `expiresAt`, `isActive`), and
+every grant/revoke/approve action is logged the same way via `utils/activityLogger.js` →
+`AccessActivityLog`. There's no separate access model per method — only the *entry point* differs:
 
-1. **Patient-initiated (QR/short-code)** — `controllers/access/generateAccessToken.js` creates an
-   `AccessToken`; scanning it (`scanWeb.js`) shows a claim page; `claimAccess.js` marks it used and
-   creates a `PatientAccess` grant.
-2. **Doctor-initiated (OTP)** — `requestAccessByDoctor.js` sends a WhatsApp OTP to the patient (via
-   Twilio, falls back to console-logged OTP in dev) and creates an inactive `PatientAccess`;
-   `approveDoctorRequest.js` verifies the OTP and activates it. **This is the flow that's fully
-   wired and working.**
+1. **Doctor requests → patient approves (OTP)** — `controllers/doctor/requestAccessByDoctor.js`
+   (doctor, `doctorAuthorize`) looks up the patient by phone, sends a 6-digit OTP over WhatsApp
+   (Twilio, falls back to console-logged OTP in dev), and creates an *inactive* `PatientAccess`
+   with the doctor's stated `reason`. `controllers/access/approveDoctorRequest.js` (doctor submits
+   the OTP the patient received — only the patient could have given it to them, which is the
+   "approval") verifies it against `User.otp`/`otpExpires` and flips `isActive: true`.
+2. **Patient generates a token → doctor enters it** — `controllers/access/generateAccessToken.js`
+   (patient) creates an `AccessToken` (`shortCode` + `token`, both valid). `controllers/access/
+   claimAccess.js` (doctor) accepts **either** `token` or `shortCode` in the request body — same
+   endpoint serves manual entry — and upserts an active `PatientAccess`.
+3. **Patient generates a QR → doctor scans it** — the same `AccessToken` from method 2 also encodes
+   a `qrDataUrl`; scanning it opens `controllers/access/scanWeb.js` (public claim-info page), whose
+   "Claim Access" button hits the same `claimAccess.js` endpoint with the token. Methods 2 and 3 are
+   the same backend flow with two different ways of getting the token into the doctor's hands.
 
-There's also an older, self-documented-incomplete third path (`requestAccess.js`/
-`approveRequest.js`) still reachable via `/api/access/request` and `/api/access/approve` — see §8.
+There's also `grantAccessByPhone.js` — a fourth, simpler convenience path (patient directly grants a
+doctor found by phone, no request/OTP/claim round-trip) that writes to the same `PatientAccess`
+model and logs the same way. Not one of the three primary methods, but consistent with the same
+underlying system.
+
+An older, now-removed duplicate of method 1 (`requestAccess.js`/`approveRequest.js`) used to exist
+and was genuinely broken (its own code comments admitted `PatientAccess` was never created) — it's
+been deleted; `requestAccessByDoctor.js`/`approveDoctorRequest.js` is the only method-1 implementation.
 
 Every `PatientAccess` grant is `view`-only: a doctor/hospital can view existing records and upload
 new ones, but never edit or delete existing patient data (enforced in
@@ -230,10 +246,10 @@ All routes are mounted under `/api`. Grouped by domain (method — path — auth
 **Chat** (`/api/chat`) — patient AI chat; (`/api/doctor` `POST /chat`) — doctor AI chat, both backed by local Ollama
 **Hospital** (`/api/hospital`) — signup/verify/login/reset, doctor management (`/create-doctor`, `/doctors*`)
 **Doctor** (`/api/doctor`) — signup/verify/login/reset, `/me`
-**Doctor access** (`/api/doctor-access`) — `/patient/:id/records`, `/patient/:id/update` (view-only, edits rejected), `/request-access`
-**Access control** (`/api/access`) — token generate/grant/claim/request/approve/revoke, activity logs, public `/scan` claim page
-**Pharmacy** (`/api/pharmacy`) — signup/verify/login/reset, `/nearby`, `/pharmacy/:id`, stock CRUD (`/stock*`, auth required)
-**Medicine** (`/api/medicine`) — global medicine catalog CRUD (pharmacy auth required on all three routes)
+**Doctor access** (`/api/doctor-access`) — `/patient/:id/records`, `/patient/:id/update` (view-only, edits rejected), `/request-access` (method 1, step 1)
+**Access control** (`/api/access`) — `/generate` + `/claim` (methods 2 & 3), `/grant-by-phone`, `/approve-doctor-request` (method 1, step 2), `/list`, `/revoke`, `/revoke-token`, `/activity-logs`, `/pending-requests`, public `/scan` claim page (method 3)
+**Pharmacy** (`/api/pharmacy`) — signup/verify/login/reset, `/nearby` (public), `/pharmacy/:id` (public), stock CRUD (`/stock*`, auth required)
+**Medicine** (`/api/medicine`) — `/search-nearby` (**public** — medicine name + optional lat/lng/radius → nearby pharmacies with price/quantity), catalog CRUD (pharmacy auth required)
 **Health check** — `GET /api/health`
 
 ## 8. Known limitations / remaining work
@@ -241,22 +257,10 @@ All routes are mounted under `/api`. Grouped by domain (method — path — auth
 These were intentionally **not** fixed in the stabilization pass — they're feature/design decisions,
 not bugs with an obvious single fix, or they need credentials this environment doesn't have:
 
-- **Patient-facing medicine discovery has no working public endpoint.** The blueprint's "Medicine
-  Discovery Engine" (search nearby pharmacies for a medicine, compare price/availability) was
-  previously implemented against a `pharmacy.medicines` embedded array that doesn't exist on the
-  `Pharmacy` schema — those routes always crashed or returned empty results and have been removed
-  (`controllers/pharmacy/locationController.js`, `routes/pharmacyRoute.js`). The *real* inventory
-  system (`PharmacyStock`/`Medicine`, `controllers/pharmacy/functionality/*.js`) is fully working,
-  but every route on it — including `nearestWithStock.js`, which is exactly the "find nearby
-  pharmacy with medicine X" feature — requires `pharmacyAuth`, i.e. only a logged-in pharmacy can
-  call it. **Patients have no way to search medicine availability today.** This needs a deliberate
-  design decision (new public patient-facing endpoint vs. reworking auth on the existing one)
-  before frontend work can build this feature.
-- **Duplicate doctor-access-request flow.** `requestAccess.js`/`approveRequest.js` (mounted at
-  `POST /api/access/request` and `/api/access/approve`) is an older, self-documented-incomplete
-  path that overlaps with the working OTP flow (`requestAccessByDoctor.js`/
-  `approveDoctorRequest.js`). Left in place per product decision — pick one and remove the other
-  before building frontend flows against it.
+- **`controllers/pharmacy/functionality/nearestWithStock.js` is redundant with the new public
+  `/api/medicine/search-nearby` endpoint** but still sits behind `pharmacyAuth` for no functional
+  reason (it never reads `req.user`). Left as-is since it's not broken, just superseded for the
+  public use case — worth removing later to avoid two ways to do the same query.
 - **`todaysIntake` (BP/Sugar medication adherence counter) has no daily-reset logic.** The field now
   persists correctly (it didn't before), but nothing resets it to 0 at the start of a new day, so
   once a patient hits their daily tablet count the reminder logic won't fire again on later days.
@@ -292,16 +296,13 @@ Everything else degrades gracefully per-feature when unset.
 
 ## 10. Recommended next steps
 
-1. **Decide the medicine-discovery auth model** (§8, first bullet) — this blocks a core blueprint
-   feature and should be resolved before frontend work touches pharmacy search.
-2. **Pick one doctor-access-request flow** and delete the other.
-3. **Start frontend work.** Recommendation: React (matches the blueprint and the existing
+1. **Start frontend work.** Recommendation: React (matches the blueprint and the existing
    `FRONTEND_URL`-based CORS/Socket.IO setup) with a thin API client layer against the endpoint map
    in §7. Socket.IO is already initialized server-side for real-time reminder push — wire up a
    client listener early since it's the one piece of realtime UX in the app.
-4. **Get real credentials** for Supabase, Gmail, and at least one of Twilio/Mapbox/OCR.space to
+2. **Get real credentials** for Supabase, Gmail, and at least one of Twilio/Mapbox/OCR.space to
    unblock end-to-end testing of document upload, email, geocoding, and OCR.
-5. **Stand up Ollama locally** (or decide on a hosted LLM alternative) to exercise the AI chat/
+3. **Stand up Ollama locally** (or decide on a hosted LLM alternative) to exercise the AI chat/
    summary features — they're currently unverified beyond "does it return a graceful fallback."
-6. **Add automated tests**, starting with the auth flows and the `PatientAccess` authorization
-   check in `middleware/documentAccess.js` (the security-sensitive one).
+4. **Add automated tests**, starting with the auth flows, the `PatientAccess` authorization check
+   in `middleware/documentAccess.js`, and the three doctor-access grant methods (§5).
