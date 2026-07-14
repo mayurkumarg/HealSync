@@ -1,10 +1,10 @@
 import { Router } from "express";
 import authorization from "./../controllers/authorization.js";
-import initBpReading from "../controllers/UserFunctionality/BP/bpReading.js";
-import getBpReadings from "../controllers/UserFunctionality/BP/getBpReading.js";
-import updateBpReading from "../controllers/UserFunctionality/BP/updateReading.js";
-import deleteBpReading from "../controllers/UserFunctionality/BP/deleteReading.js";
-import addBpReading from "../controllers/UserFunctionality/BP/addReadings.js";
+import initBpReading from "../controllers/UserFunctionality/bp/bpReading.js";
+import getBpReadings from "../controllers/UserFunctionality/bp/getBpReading.js";
+import updateBpReading from "../controllers/UserFunctionality/bp/updateReading.js";
+import deleteBpReading from "../controllers/UserFunctionality/bp/deleteReading.js";
+import addBpReading from "../controllers/UserFunctionality/bp/addReadings.js";
 
 const userFuncRoutes = Router();
 
@@ -16,11 +16,11 @@ userFuncRoutes.patch("/BP", authorization, updateBpReading);
 userFuncRoutes.delete("/BP", authorization, deleteBpReading);
 
 
-import initSugarProfile from "../controllers/UserFunctionality/sugar/intiSugarTracking.js";
+import initSugarProfile from "../controllers/UserFunctionality/sugar/initSugarTracking.js";
 import addSugarReading from "../controllers/UserFunctionality/sugar/sugarReading.js";
 import getSugarReadings from "../controllers/UserFunctionality/sugar/getSugarReading.js";
 import updateSugarReading from "../controllers/UserFunctionality/sugar/updateSugar.js";
-import deleteSugarReading from "../controllers/UserFunctionality/sugar/deleteDocNReading.js";
+import deleteSugarReading from "../controllers/UserFunctionality/sugar/deleteSugarReading.js";
 
 userFuncRoutes.post("/Sugar", authorization,initSugarProfile);
 userFuncRoutes.post("/Sugar/SugarReadings", authorization,addSugarReading);
