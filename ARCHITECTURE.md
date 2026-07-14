@@ -163,10 +163,17 @@ encrypted at the Mongoose schema level (`pre("save")`/`post("find")` hooks) usin
 
 Four independent JWT-based identities: `User` (patient), `Doctor`, `Hospital`, `Pharmacy` — each
 with its own signup/verify/login/forgot-password/reset-password flow (`controllers/authentication*`,
-`controllers/authentication_hos_doc/*`, `controllers/pharmacy/*`) and its own auth middleware
+`controllers/authentication_hos_doc/*`, `controllers/pharmacy/*`). All four auth middlewares
 (`controllers/authorization.js`, `middleware/doctorAuthorize.js`, `middleware/hospitalAuthorize.js`,
-`controllers/pharmacy/pharmacyAuthorizer.js`). `middleware/identifyActor.js` is a generic variant
-that tries `User` then `Doctor` for endpoints usable by either.
+`controllers/pharmacy/pharmacyAuthorizer.js`) are now thin wrappers around one shared factory,
+`middleware/authFactory.js`'s `createAuthMiddleware({ Model, reqKey, role, ... })` — one JWT-verify
+implementation, one token secret source, one `passwordChangedAt`-revocation check, instead of four
+near-duplicate copies that had quietly drifted (different secret fallbacks, inconsistent revocation
+checks, one using a hand-built object instead of the real document). Each still attaches to a
+different `req` key (`req.user`, `req.doctor`, `req.hospital`) matching what every controller
+already expects — no controller changes were needed. `middleware/identifyActor.js` is a generic
+variant that tries `User` then `Doctor` for endpoints usable by either, built on the same factory's
+shared `verifyBearerToken()` step.
 
 **Doctor access to a patient's records is one system with three grant methods.** Every method ends
 up writing the same `PatientAccess` record (`patientId`, `doctorId`, `expiresAt`, `isActive`), and
@@ -216,14 +223,14 @@ for a future `frontend/` sibling):
 /ARCHITECTURE.md          This file
 /backend/
   app.js                  Express app assembly (middleware, route mounting)
-  server.js               Process entry point (env validation, DB connect, HTTP+socket listen)
+  server.js               Process entry point (env validation, DB connect, HTTP+socket listen, graceful shutdown)
   configure/              DB connection, Supabase client, env validation
   routes/                 One file per resource, thin — delegates to controllers
   controllers/            Business logic, grouped by domain (authentication, doctor, pharmacy, access, ...)
-  middleware/             Auth guards, document-access checks
+  middleware/             authFactory.js (shared auth logic) + the per-identity wrappers, document-access checks
   models/                 Mongoose schemas
   service/                External integrations (email, JWT, geocoding, socket, reminder scheduler)
-  utils/                  Cross-cutting helpers (encryption, OTP, QR, cron jobs, cloud upload)
+  utils/                  Cross-cutting helpers (encryption, OTP, QR, cronJobs/, cloud upload)
   docs/                   Historical/detailed docs (encryption, access control, reminders, security audits)
   .env.example            Source of truth for required environment variables
 ```
@@ -233,6 +240,17 @@ Run it with `cd backend && npm install && npm run dev` (see root `README.md`).
 Routes stay thin and delegate to controllers, except `routes/documentAI.js`, which currently
 defines its upload handlers inline rather than delegating — inconsistent with the rest of the
 codebase but not broken; worth refactoring later for consistency.
+
+**Production-process concerns**: `server.js` handles `SIGTERM`/`SIGINT` by closing the HTTP server
+and the Mongoose connection before exiting (with a forced-exit timeout fallback), rather than dying
+mid-request. `controllers/Error/globalErrorhandler.js` translates Mongoose's own error types
+(`CastError`, duplicate-key `11000`, `ValidationError`) into clean 400/409 responses instead of
+leaking raw internal messages as generic 500s — errors thrown as `CustomError` elsewhere are
+unaffected. `utils/cronJobs/` holds all background jobs: the reminder scheduler's own checks
+(`service/reminderScheduler.js`), the BP/sugar medication-intake reminder
+(`BPSugarReminder.js`), and `patientAccessCleanup.js`, which daily deactivates any `PatientAccess`
+grant whose `expiresAt` has passed (mirrors the TTL index `AccessToken` already has, since
+`PatientAccess` itself isn't TTL-indexed).
 
 ## 7. API map
 
@@ -274,6 +292,22 @@ not bugs with an obvious single fix, or they need credentials this environment d
 - **Multer is on the deprecated 1.x line** (`multer@1.4.5-lts.2` — install warns of known
   vulnerabilities patched in 2.x). Left alone in this pass since 2.x has API differences; upgrade
   as a dedicated task.
+- **The API response envelope is inconsistent across controller groups** — some return
+  `{status, message}`/`{status, data}` (most controllers, matching `CustomError`'s shape), some
+  return `{success, data}` (`documentController.js` and a few others), some return `{ok, answer}`
+  (`chatController.js`, `doctorChatController.js`). Deliberately not standardized in this pass —
+  it would touch on the order of 60 controllers for a contract change that's cheaper to make once
+  frontend integration shows which shape actually matters most in practice.
+- **No request-validation layer beyond what Mongoose enforces at the model level** — no
+  `express-validator`/`Zod`/similar for per-route input shape checks (e.g. malformed query params
+  to a search endpoint currently rely on defensive coding per-controller rather than a shared
+  validation middleware). Worth adding incrementally on new/high-traffic endpoints rather than
+  retrofitting everything at once.
+- **No centralized config module or logging library.** `process.env.X` is read ad hoc throughout
+  the codebase (all required vars are still validated once at startup via
+  `configure/validateEnv.js`), and all logging is raw `console.log`/`console.error` with no levels
+  or structured output. Both are real "nice to have" production patterns but lower value relative
+  to the risk of touching this many files right before frontend integration begins.
 - **`unhandledRejection` is intentionally non-fatal** (logs, doesn't exit) because several
   controllers still aren't uniformly wrapped in try/catch — exiting the whole process on any one
   of them would be too fragile without a process supervisor (PM2/systemd/Docker restart policy) in
