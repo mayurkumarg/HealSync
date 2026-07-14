@@ -56,9 +56,9 @@ desktop.ini
 .settings/
 .classpath
 
-# Uploads directory (user uploaded files)
-uploads/*
-!uploads/.gitkeep
+# Runtime upload directories (backend writes/cleans these up itself; never commit user files)
+backend/uploads/*
+backend/tmpUploads/*
 
 # Database dumps
 *.sql
@@ -70,11 +70,6 @@ uploads/*
 *.key
 *.crt
 *.cert
-
-# Package manager files
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
 
 # Testing
 .jest/
