@@ -1,0 +1,35 @@
+import express from "express";
+import doctorRegister from "../controllers/authentication_hos_doc/doctorRegister.js";
+import verifyDoctorEmail from "../controllers/authentication_hos_doc/verifyDoctorEmail.js";
+import doctorLogin from "../controllers/authentication_hos_doc/doctorLogin.js";
+import doctorAuthorize from "../middleware/doctorAuthorize.js";
+import doctorForgotPassword from "../controllers/authentication_hos_doc/doctorForgotPassword.js";
+import doctorResetPassword from "../controllers/authentication_hos_doc/doctorResetPassword.js";
+import { handleDoctorChat } from "../controllers/doctor/doctorChatController.js";
+
+const router = express.Router();
+
+router.post("/sign-up", doctorRegister);
+router.get("/verify/:token", verifyDoctorEmail);
+router.post("/login", doctorLogin);
+
+router.post("/forgot-password", doctorForgotPassword);
+router.get("/reset-password/:token", (req, res) => {
+  // Redirect to frontend React app
+  res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/doctor/reset-password/${req.params.token}`);
+});
+router.post("/reset-password/:token", doctorResetPassword);
+
+// example protected endpoint
+router.get("/me", doctorAuthorize, (req, res) => {
+  const d = req.doctor.toObject();
+  delete d.password;
+  delete d.token;
+  delete d.tokenExpires;
+  res.status(200).send({ status: "success", data: d });
+});
+
+// AI Chat for Patient Data Summary
+router.post("/chat", doctorAuthorize, handleDoctorChat);
+
+export default router;
