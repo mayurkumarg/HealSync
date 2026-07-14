@@ -3,8 +3,6 @@ import express from "express";
 import identifyActor from "../middleware/identifyActor.js";
 import generateAccessToken from "../controllers/access/generateAccessToken.js";
 import claimAccess from "../controllers/access/claimAccess.js";
-import requestAccess from "../controllers/access/requestAccess.js";
-import approveRequest from "../controllers/access/approveRequest.js";
 import listAccesses from "../controllers/access/listAccesses.js";
 import revokeAccess from "../controllers/access/revokeAccess.js";
 import revokeToken from "../controllers/access/revokeToken.js";
@@ -24,12 +22,6 @@ router.post("/grant-by-phone", identifyActor, grantAccessByPhone);
 
 // Doctor claims by scanning QR or entering short code (API claim - for app)
 router.post("/claim", identifyActor, claimAccess);
-
-// Doctor requests access (not scanning QR)
-router.post("/request", identifyActor, requestAccess);
-
-// Patient approves doctor request (via OTP or auth)
-router.post("/approve", identifyActor, approveRequest);
 
 // List accesses (patient or doctor)
 router.get("/list", identifyActor, listAccesses);

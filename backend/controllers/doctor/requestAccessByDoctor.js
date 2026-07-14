@@ -72,7 +72,7 @@ const requestAccessByDoctor = handelAsyncFunction(async (req, res, next) => {
     expiryDuration,
     expiresAt: expiryDuration === 'until_revoked' ? null : new Date(Date.now() + parseDuration(expiryDuration)),
     isActive: false, // Will be activated after OTP approval
-    _pendingReason: reason // Temporary field
+    reason: reason || null
   });
 
   res.status(200).json({
