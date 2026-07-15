@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { loginSchema, type LoginValues } from '@/lib/schemas'
 import { ApiError } from '@/api/client'
+import { roleHome } from '@/routes/nav'
 import type { Role } from '@/types'
 
 export default function Login() {
@@ -20,7 +21,7 @@ export default function Login() {
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as { from?: string })?.from || '/app/dashboard'
+  const from = (location.state as { from?: string })?.from
 
   const {
     register,
@@ -33,7 +34,7 @@ export default function Login() {
     try {
       const user = await login(role, values.email, values.password)
       toast.success('Welcome back!', `Signed in as ${user.name || user.email}`)
-      navigate(from, { replace: true })
+      navigate(from || roleHome(user.role), { replace: true })
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Login failed. Please try again.'
       toast.error('Sign in failed', message)

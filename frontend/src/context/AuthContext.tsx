@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { authApi } from '@/api/auth'
-import { tokenStore } from '@/api/client'
+import { api, tokenStore } from '@/api/client'
 import { decodeJwt, isJwtExpired } from '@/lib/jwt'
 import type { AuthUser, Role } from '@/types'
 
@@ -55,6 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: payload?.username,
       role: (payload?.type as Role) || role,
     }
+
+    // Doctor/hospital JWTs carry no name — fetch it from their /me endpoint so the UI can greet them.
+    if (nextUser.role === 'doctor' || nextUser.role === 'hospital') {
+      try {
+        const { data } = await api.get(`/${nextUser.role}/me`)
+        const me = data?.data ?? {}
+        nextUser.name = me.name ?? nextUser.name
+        nextUser.phone_no = me.phone_no ?? me.contactNo
+      } catch {
+        /* non-fatal — fall back to email in the UI */
+      }
+    }
+
     if (nextUser.name) localStorage.setItem(NAME_KEY, nextUser.name)
     setUser(nextUser)
     return nextUser

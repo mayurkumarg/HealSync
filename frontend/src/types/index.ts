@@ -183,3 +183,96 @@ export interface ChatMessage {
   createdAt: number
   pending?: boolean
 }
+
+// ---- Provider: Doctor & Hospital ----
+export type VerificationStatus = 'pending' | 'verified' | 'rejected'
+
+export interface Doctor {
+  _id: string
+  name: string
+  username: string
+  email: string
+  phone_no: string
+  hospitalId?: string | null
+  specialization?: string | null
+  licenseNo?: string
+  experienceYears?: number
+  verified: boolean
+  verification?: {
+    status: VerificationStatus
+    verifiedAt?: string | null
+    document?: string
+  }
+  createdAt?: string
+}
+
+export interface Hospital {
+  _id: string
+  name: string
+  type: 'hospital' | 'clinic' | 'lab' | 'diagnostic_center'
+  address?: string
+  contactNo?: string
+  email: string
+  geoLocation?: { type: string; coordinates: [number, number] }
+  verification?: { registrationNo?: string; status?: VerificationStatus }
+  servicesOffered?: string[]
+  verified: boolean
+  isOpen?: boolean
+  rating?: number
+  totalRatings?: number
+  createdAt?: string
+}
+
+export interface DoctorStats {
+  totalDoctors: number
+  verifiedDoctors: number
+  pendingDoctors: number
+  rejectedDoctors: number
+  specializations: { _id: string | null; count: number }[]
+}
+
+/** A patient a doctor has access to — a PatientAccess row with populated patient. */
+export interface AccessiblePatient {
+  _id: string // PatientAccess id
+  patientId: { _id: string; name?: string; email?: string; phone_no?: string }
+  doctorId: string
+  accessType: string
+  expiryDuration: string
+  expiresAt: string | null
+  isActive: boolean
+  reason?: string | null
+  createdAt?: string
+}
+
+/** Full patient records bundle returned to a doctor with access. */
+export interface PatientRecords {
+  patient: {
+    _id: string
+    name?: string
+    email?: string
+    phone_no?: string
+    abhaId?: string | null
+    createdAt?: string
+  }
+  healthForms: {
+    _id: string
+    category: string
+    data?: unknown
+    description?: string
+    createdAt?: string
+    createdBy?: { name?: string; email?: string }
+  }[]
+  documents: MedicalDocument[]
+  bpData: BpProfile | null
+  sugarData: SugarProfile | null
+  reminders: Reminder[]
+  accessInfo: {
+    accessType: string
+    expiresAt: string | null
+    grantedAt?: string
+    canView: boolean
+    canUpload: boolean
+    canEdit: boolean
+    canDelete: boolean
+  }
+}

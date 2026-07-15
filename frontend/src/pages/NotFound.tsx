@@ -15,7 +15,7 @@ export default function NotFound() {
           <Link to="/">
             <Button variant="outline" leftIcon={<ArrowLeft className="h-4 w-4" />}>Go back home</Button>
           </Link>
-          <Link to="/app/dashboard">
+          <Link to="/app">
             <Button leftIcon={<Home className="h-4 w-4" />}>My dashboard</Button>
           </Link>
         </div>
