@@ -8,6 +8,9 @@ import {
   Pill,
   Sparkles,
   UserCog,
+  Users,
+  Stethoscope,
+  Building2,
 } from 'lucide-react'
 import type { Role } from '@/types'
 
@@ -29,13 +32,36 @@ const patientNav: NavItem[] = [
   { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
 ]
 
+const doctorNav: NavItem[] = [
+  { label: 'Dashboard', to: '/app/doctor', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" />, end: true },
+  { label: 'My Patients', to: '/app/doctor/patients', icon: <Users className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
+]
+
+const hospitalNav: NavItem[] = [
+  { label: 'Dashboard', to: '/app/hospital', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" />, end: true },
+  { label: 'Doctors', to: '/app/hospital/doctors', icon: <Stethoscope className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Facility', to: '/app/hospital/facility', icon: <Building2 className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
+]
+
 const minimalNav: NavItem[] = [
   { label: 'Dashboard', to: '/app/dashboard', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
 ]
 
 export function navForRole(role: Role): NavItem[] {
-  return role === 'patient' ? patientNav : minimalNav
+  if (role === 'patient') return patientNav
+  if (role === 'doctor') return doctorNav
+  if (role === 'hospital') return hospitalNav
+  return minimalNav
+}
+
+/** Where each role lands after login / on hitting /app. */
+export function roleHome(role: Role): string {
+  if (role === 'doctor') return '/app/doctor'
+  if (role === 'hospital') return '/app/hospital'
+  return '/app/dashboard'
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
