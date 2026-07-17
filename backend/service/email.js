@@ -1,19 +1,32 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 
-// Explicit timeouts — without these, a blocked/slow outbound path to Gmail's SMTP servers (a
-// real possibility on some hosting platforms) hangs the connection indefinitely instead of
-// failing fast, which in turn hangs every request that awaits an email send (signup, password
-// reset, reminders) with no error and no response.
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_FROM = process.env.RESEND_FROM || "HealSync <onboarding@resend.dev>";
+
+// Render (and several other PaaS hosts) block outbound SMTP entirely as an anti-spam measure —
+// confirmed in production via a `command: 'CONN'` ETIMEDOUT that no amount of retrying or longer
+// timeouts fixes, since the connection never gets established at all. Resend's HTTPS API isn't
+// affected by that block. This shim mimics nodemailer's `.sendMail()` signature so every call
+// site below is unchanged — only the transport underneath is different.
+const transporter = {
+  // `from` is deliberately ignored — every call site below sets it to a Gmail address (left over
+  // from the SMTP days), but Resend only accepts sending from a sender it has verified. Always
+  // sending as RESEND_FROM keeps every existing call site working unchanged.
+  async sendMail({ from: _from, to, subject, text, html }) {
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured.");
+    }
+    const { data } = await axios.post(
+      "https://api.resend.com/emails",
+      { from: RESEND_FROM, to, subject, text, html },
+      {
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+        timeout: 10000,
+      }
+    );
+    return { messageId: data.id, response: "resend" };
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
+};
 
 // ---------------------------------------------------------
 // 1) EMAIL VERIFICATION (HealSync)
