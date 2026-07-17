@@ -63,7 +63,7 @@ export function AddDoctorDrawer({ open, onClose }: { open: boolean; onClose: () 
       <div className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Full name" required><Input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Dr. Rahul Mehta" /></Field>
+          <Field label="Full name" required><Input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Dr. Full name" /></Field>
           <Field label="Username" required><Input value={form.username} onChange={(e) => set('username', e.target.value)} placeholder="dr.rahul" /></Field>
         </div>
         <Field label="Email" required><Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="doctor@example.com" /></Field>

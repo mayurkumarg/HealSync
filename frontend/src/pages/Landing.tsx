@@ -39,7 +39,7 @@ const features = [
 const stakeholders = [
   { icon: <User />, tone: 'primary', title: 'Patients', points: ['One home for all records', 'Share in a tap, revoke anytime', 'Reminders that build discipline', 'Find medicines faster'] },
   { icon: <Stethoscope />, tone: 'accent', title: 'Doctors', points: ['Instant, permissioned history', 'AI-summarized patient context', 'Upload reports & prescriptions', 'No dependence on carried files'] },
-  { icon: <Building2 />, tone: 'success', title: 'Pharmacies', points: ['Publish live stock & pricing', 'Reach nearby patients', 'Demand analytics', 'Higher conversion'] },
+  { icon: <Building2 />, tone: 'success', title: 'Pharmacies', points: ['Publish live stock & pricing', 'Reach nearby patients', 'Demand analytics', 'No commission, no middlemen'] },
 ]
 
 const steps = [
@@ -143,16 +143,16 @@ export default function Landing() {
               <div className="rounded-2xl bg-gradient-to-br from-surface-2 to-surface p-6 sm:p-8">
                 <div className="grid gap-4 sm:grid-cols-3">
                   {[
-                    { icon: <FileText className="h-5 w-5" />, label: 'Records synced', value: '128' },
-                    { icon: <Share2 className="h-5 w-5" />, label: 'Active shares', value: '3' },
-                    { icon: <BellRing className="h-5 w-5" />, label: 'Adherence', value: '96%' },
+                    { icon: <FileText className="h-5 w-5" />, label: 'Every record protected', value: 'Encrypted' },
+                    { icon: <Share2 className="h-5 w-5" />, label: 'You approve every share', value: 'Consent-based' },
+                    { icon: <BellRing className="h-5 w-5" />, label: 'Never miss a dose', value: 'Always on' },
                   ].map((s, i) => (
                     <div key={i} className="rounded-xl border border-border bg-surface p-4 text-left shadow-soft">
                       <div className="mb-3 grid h-9 w-9 place-items-center rounded-lg bg-primary-soft text-primary">
                         {s.icon}
                       </div>
-                      <p className="font-display text-2xl font-extrabold text-foreground">{s.value}</p>
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="font-display text-lg font-extrabold text-foreground sm:text-xl">{s.value}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{s.label}</p>
                     </div>
                   ))}
                 </div>

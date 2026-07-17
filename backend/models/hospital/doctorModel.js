@@ -37,6 +37,13 @@ const doctorSchema = new Schema({
     status: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" },
     verifiedAt: Date,
     verifiedBy: { type: Schema.Types.ObjectId, ref: "User" }
+  },
+
+  // Consultation module (opt-in — a doctor only appears in patient discovery once enabled)
+  consultation: {
+    enabled: { type: Boolean, default: false },
+    fee: { type: Number, default: null, min: 0 },
+    avgMinutes: { type: Number, default: 20, min: 5, max: 120 },
   }
 }, { timestamps: true });
 

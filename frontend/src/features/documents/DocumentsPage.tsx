@@ -55,18 +55,20 @@ export default function DocumentsPage() {
   const [selected, setSelected] = useState<MedicalDocument | null>(null)
   const [toDelete, setToDelete] = useState<MedicalDocument | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['documents'], queryFn: documentsApi.list })
+  const { data, isLoading, isError, error } = useQuery({ queryKey: ['documents'], queryFn: documentsApi.list })
 
   const upload = useMutation({
     mutationFn: (file: File) => documentsApi.upload(file),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['documents'] })
-      toast.success('Document uploaded', 'Your document was processed and encrypted.')
+      if (res?.stored === false) {
+        toast.warning('Not saved', res.message || 'This file was not recognized as a medical document.')
+      } else {
+        toast.success('Document uploaded', 'Your document was processed and encrypted.')
+      }
     },
     onError: (err) => {
-      const m = err instanceof ApiError ? err.message : 'Upload failed.'
-      toast.error('Upload unavailable', 'Document storage/OCR needs configuration in this environment.')
-      console.warn('[documents] upload failed:', m)
+      toast.error('Upload failed', err instanceof ApiError ? err.message : 'Please try again.')
     },
   })
 
@@ -77,8 +79,8 @@ export default function DocumentsPage() {
       toast.success('Document deleted')
       setToDelete(null)
     },
-    onError: () => {
-      toast.error('Could not delete', 'This may be a sample document.')
+    onError: (err) => {
+      toast.error('Could not delete', err instanceof ApiError ? err.message : 'Please try again.')
       setToDelete(null)
     },
   })
@@ -89,7 +91,7 @@ export default function DocumentsPage() {
     e.target.value = ''
   }
 
-  const docs = data?.documents ?? []
+  const docs = data ?? []
 
   return (
     <div>
@@ -106,9 +108,9 @@ export default function DocumentsPage() {
         }
       />
 
-      {data?.isSample && (
-        <Alert tone="info" title="Preview data" className="mb-5">
-          Showing sample documents. Connect Supabase storage & OCR to upload and process your own.
+      {isError && (
+        <Alert tone="danger" title="Could not load your documents" className="mb-5">
+          {error instanceof ApiError ? error.message : 'Something went wrong. Please try again.'}
         </Alert>
       )}
 
@@ -118,7 +120,7 @@ export default function DocumentsPage() {
             <SkeletonCard key={i} />
           ))}
         </div>
-      ) : docs.length === 0 ? (
+      ) : isError ? null : docs.length === 0 ? (
         <EmptyState
           icon={<FolderHeart className="h-7 w-7" />}
           title="Your wallet is empty"

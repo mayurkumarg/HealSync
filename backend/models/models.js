@@ -247,6 +247,7 @@ const notificationSchema = new Schema({
       "data_package_ready",
       "ai_chat_invite",
       "form_entry",
+      "consultation",
     ],
     required: true,
   },
@@ -255,6 +256,8 @@ const notificationSchema = new Schema({
   sentAt: { type: Date, default: Date.now },
   readStatus: { type: Boolean, default: false },
 });
+// Supports listNotifications' find({userId}).sort({sentAt:-1}) and the unread-count query.
+notificationSchema.index({ userId: 1, readStatus: 1, sentAt: -1 });
 export const Notification = model("Notification", notificationSchema);
 
 /* ---------- Audit ---------- */
@@ -266,6 +269,7 @@ const auditLogSchema = new Schema({
   timestamp: { type: Date, default: Date.now },
   extra: Schema.Types.Mixed,
 });
+auditLogSchema.index({ patientId: 1, timestamp: -1 });
 export const AuditLog = model("AuditLog", auditLogSchema);
 
 /* ---------- AI Chat Session ---------- */

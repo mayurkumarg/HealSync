@@ -27,8 +27,8 @@ const forgotPassword = handelAsyncFunction(async (req, res, next) => {
     const token = generateToken();
     const tokenExpire = Date.now() + 10 * 60 * 1000;
 
-    //^ link for resetting the password
-    const resetLink = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${token}`;
+    //^ link for resetting the password — points at the frontend's ResetPassword page
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}?role=patient`;
 
     user.token = token;
     user.tokenExpires = tokenExpire;

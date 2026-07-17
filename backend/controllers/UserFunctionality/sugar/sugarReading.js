@@ -125,7 +125,13 @@ const addSugarReading = handelAsyncFunction(async (req, res, next) => {
 
   /** -------------------- Push Reading & Update Stock -------------------- */
 
+  // Push, capping the embedded array so a long-lived account can't grow this document
+  // unboundedly.
+  const READINGS_CAP = 730; // ~2 years of daily readings, generous for real usage
   sugarProfile.readings.push(newReading);
+  if (sugarProfile.readings.length > READINGS_CAP) {
+    sugarProfile.readings = sugarProfile.readings.slice(-READINGS_CAP);
+  }
   sugarProfile.recentSuggestion = recentSuggestion;
 
   // reduce medication stock

@@ -1,6 +1,7 @@
 import handelAsyncFunction from "../../../utils/asyncFunctionHandler.js";
 import CustomError from "../../../utils/customError.js";
 import SugarTracking from "../../../models/sugar.js";
+import { resetDailyIntakeIfNeeded } from "../../../utils/resetDailyIntake.js";
 
 /**
  * @desc   Get Sugar readings OR Sugar medication document (not both)
@@ -31,6 +32,9 @@ const getSugarReadings = handelAsyncFunction(async (req, res, next) => {
      * OPTION 1 → RETURN ONLY DOCUMENT DETAILS
      * ---------------------------------------------------------- */
     if (include === "document") {
+        resetDailyIntakeIfNeeded(sugarProfile);
+        await sugarProfile.save().catch(() => {});
+
         return res.status(200).json({
             status: "success",
             message: "Sugar medication document fetched successfully.",
@@ -38,7 +42,8 @@ const getSugarReadings = handelAsyncFunction(async (req, res, next) => {
                 drugName: sugarProfile.drugName,
                 dosage: sugarProfile.dosage,
                 tabletsPerDay: sugarProfile.tabletsPerDay,
-                stockAvailable: sugarProfile.stockAvailable
+                stockAvailable: sugarProfile.stockAvailable,
+                todaysIntake: sugarProfile.todaysIntake
             }
         });
     }

@@ -28,15 +28,9 @@ export default async function createFormEntry(req, res) {
     let patientId = req.body.patientId || actor.doc._id.toString();
     let canCreate = false;
 
-    console.log('\n[FORM ENTRY] Create Request:');
-    console.log('Actor type:', actor.type);
-    console.log('Actor ID:', actor.doc._id.toString());
-    console.log('Target Patient ID:', patientId);
-
     // Case 1: The actor is the patient themselves.
     if (actor.type.toLowerCase() === "user" && actor.doc._id.toString() === patientId) {
       canCreate = true;
-      console.log('[FORM ENTRY] ✓ Patient creating for themselves');
     }
     // Case 2: The actor is a doctor.
     else if (actor.type.toLowerCase() === "doctor") {
@@ -52,12 +46,9 @@ export default async function createFormEntry(req, res) {
       // Check if access exists and is not expired (view access allows uploading new data)
       if (access && !isExpired) {
         canCreate = true;
-        console.log('[FORM ENTRY] ✓ Doctor has view access - can upload new forms');
-      } else {
-        console.log('[FORM ENTRY] ✗ Doctor lacks access or access expired');
       }
 
-      
+
       const userDetails = await userModel.findById(patientId);
 
 
@@ -82,8 +73,6 @@ export default async function createFormEntry(req, res) {
       createdBy: actor.doc._id,
       creatorModel: actor.type.charAt(0).toUpperCase() + actor.type.slice(1),
     });
-
-    console.log('[FORM ENTRY] ✓ Form entry created:', formEntry._id);
 
     return res.status(201).json({ status: "success", data: formEntry });
 

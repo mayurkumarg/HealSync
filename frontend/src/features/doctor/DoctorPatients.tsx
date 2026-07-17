@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Users, UserPlus, QrCode, Clock, Phone, ArrowRight, FileHeart } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card, Button, Badge, EmptyState, Avatar, Skeleton } from '@/components/ui'
+import { Card, Button, Badge, EmptyState, Avatar, Skeleton, Alert } from '@/components/ui'
 import { doctorApi } from '@/api/doctor'
 import { countdown } from '@/lib/format'
 import { RequestAccessDrawer } from './RequestAccessDrawer'
@@ -12,7 +12,7 @@ import { ClaimCodeModal } from './ClaimCodeModal'
 export default function DoctorPatients() {
   const [requestOpen, setRequestOpen] = useState(false)
   const [claimOpen, setClaimOpen] = useState(false)
-  const { data, isLoading } = useQuery({ queryKey: ['doctor', 'patients'], queryFn: doctorApi.listPatients })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['doctor', 'patients'], queryFn: doctorApi.listPatients })
 
   return (
     <div>
@@ -37,6 +37,10 @@ export default function DoctorPatients() {
             <Skeleton key={i} className="h-40 w-full rounded-2xl" />
           ))}
         </div>
+      ) : isError ? (
+        <Alert tone="danger" title="Can't load patients">
+          Something went wrong fetching your patient list. Try refreshing the page.
+        </Alert>
       ) : (data?.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Users className="h-7 w-7" />}

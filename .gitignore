@@ -56,6 +56,9 @@ desktop.ini
 .settings/
 .classpath
 
+# Local Claude Code config (per-machine settings/permissions, not project source)
+.claude/
+
 # Runtime upload directories (backend writes/cleans these up itself; never commit user files)
 backend/uploads/*
 backend/tmpUploads/*

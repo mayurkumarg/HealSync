@@ -47,7 +47,7 @@ const createDoctorByHospital = handelAsyncFunction(async (req, res, next) => {
   }
 
   // Send email to doctor with verification link and hospital info
-  const link = `${req.protocol}://${req.get("host")}/api/doctor/verify/${token}`;
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${token}?role=doctor`;
   const mailRes = await mail(req.body.name || "Doctor", link, email);
 
   if (!mailRes || mailRes.success === false) {

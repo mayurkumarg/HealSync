@@ -5,17 +5,18 @@ import path from "path";
 import upload from "../service/multer.js";
 import uploadToCloud from "../utils/uploadToCloud.js";
 import { processDocumentAI } from "../controllers/documentAIController.js";
-import { MedicalDocument } from "../models/models.js";
+import { MedicalDocument, Notification } from "../models/models.js";
 import authorize from "../controllers/authorization.js";
 import doctorAuthorize from "../middleware/doctorAuthorize.js";
 import identifyActor from "../middleware/identifyActor.js";
 import { auditDocumentAccess } from "../middleware/documentAccess.js";
 import PatientAccess from "../models/hospital/patientAccessModel.js";
+import { documentUploadLimiter } from "../middleware/rateLimiters.js";
 
 const router = express.Router();
 
 // Patient upload route
-router.post("/upload", authorize, auditDocumentAccess, upload.single("file"), async (req, res) => {
+router.post("/upload", authorize, documentUploadLimiter, auditDocumentAccess, upload.single("file"), async (req, res) => {
   try {
     if (!req.file)
       return res.status(400).json({ ok: false, error: "file required" });
@@ -36,7 +37,10 @@ router.post("/upload", authorize, auditDocumentAccess, upload.single("file"), as
     const tempDir = "./tmpUploads";
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    const tempPath = path.join(tempDir, `${Date.now()}-${req.file.originalname}`);
+    // SECURITY: path.basename() strips any directory components from the client-controlled
+    // filename — without it, a name like "../../../../etc/cron.d/evil" would let path.join()
+    // resolve outside tempDir, letting an authenticated user write a file anywhere on disk.
+    const tempPath = path.join(tempDir, `${Date.now()}-${path.basename(req.file.originalname)}`);
     fs.writeFileSync(tempPath, req.file.buffer);   // <-- buffer saved to disk
 
     /* --------------------------------------------------------
@@ -66,6 +70,10 @@ router.post("/upload", authorize, auditDocumentAccess, upload.single("file"), as
      * -------------------------------------------------------- */
     const uploadResult = await uploadToCloud([req.file], "report");
     const uploadedFile = uploadResult[0];
+    if (!uploadedFile) {
+      try { fs.unlinkSync(tempPath); } catch {}
+      return res.status(502).json({ ok: false, error: "Cloud storage upload failed. Please try again." });
+    }
 
     /* --------------------------------------------------------
      * 3) SAVE DOCUMENT TO DB
@@ -101,13 +109,13 @@ router.post("/upload", authorize, auditDocumentAccess, upload.single("file"), as
     console.error('[DOCUMENT_UPLOAD_ERROR]', err);
     return res.status(500).json({
       ok: false,
-      error: err.toString(),
+      error: "Could not process this document. Please try again.",
     });
   }
 });
 
 // Doctor upload document for patient route
-router.post("/upload-for-patient", identifyActor, auditDocumentAccess, upload.single("file"), async (req, res) => {
+router.post("/upload-for-patient", identifyActor, documentUploadLimiter, auditDocumentAccess, upload.single("file"), async (req, res) => {
   try {
     if (!req.file)
       return res.status(400).json({ ok: false, error: "file required" });
@@ -165,7 +173,10 @@ router.post("/upload-for-patient", identifyActor, auditDocumentAccess, upload.si
     const tempDir = "./tmpUploads";
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
-    const tempPath = path.join(tempDir, `${Date.now()}-${req.file.originalname}`);
+    // SECURITY: path.basename() strips any directory components from the client-controlled
+    // filename — without it, a name like "../../../../etc/cron.d/evil" would let path.join()
+    // resolve outside tempDir, letting an authenticated user write a file anywhere on disk.
+    const tempPath = path.join(tempDir, `${Date.now()}-${path.basename(req.file.originalname)}`);
     fs.writeFileSync(tempPath, req.file.buffer);
 
     /* --------------------------------------------------------
@@ -195,6 +206,10 @@ router.post("/upload-for-patient", identifyActor, auditDocumentAccess, upload.si
      * -------------------------------------------------------- */
     const uploadResult = await uploadToCloud([req.file], "report");
     const uploadedFile = uploadResult[0];
+    if (!uploadedFile) {
+      try { fs.unlinkSync(tempPath); } catch {}
+      return res.status(502).json({ ok: false, error: "Cloud storage upload failed. Please try again." });
+    }
 
     /* --------------------------------------------------------
      * 3) SAVE DOCUMENT TO DB
@@ -217,6 +232,13 @@ router.post("/upload-for-patient", identifyActor, auditDocumentAccess, upload.si
 
     console.log(`[DOCTOR_DOCUMENT_SAVED] Doctor ${doctorId} uploaded document ${savedDoc._id} for patient ${patientId}`);
 
+    Notification.create({
+      userId: patientId,
+      type: "document_upload",
+      message: `${req.actor.doc.name || "Your doctor"} added a new document: ${req.file.originalname}`,
+      relatedDocument: savedDoc._id,
+    }).catch((err) => console.error("[NOTIFICATION] Failed to create:", err.message));
+
     return res.json({
       ok: true,
       stored: true,
@@ -230,7 +252,7 @@ router.post("/upload-for-patient", identifyActor, auditDocumentAccess, upload.si
     console.error('[DOCTOR_DOCUMENT_UPLOAD_ERROR]', err);
     return res.status(500).json({
       ok: false,
-      error: err.toString(),
+      error: "Could not process this document. Please try again.",
     });
   }
 });

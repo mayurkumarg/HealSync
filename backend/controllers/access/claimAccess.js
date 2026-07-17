@@ -2,6 +2,7 @@
 import AccessToken from "../../models/AccessToken.js";
 import PatientAccess from "../../models/hospital/patientAccessModel.js"; // existing file
 import { logAccessActivity } from "../../utils/activityLogger.js";
+import { Notification } from "../../models/models.js";
 import mongoose from "mongoose";
 
 const { Types } = mongoose;
@@ -91,6 +92,12 @@ export default async function claimAccess(req, res) {
       },
       req
     });
+
+    Notification.create({
+      userId: patientId,
+      type: "alert",
+      message: `${actor.doc.name || "A doctor"} now has ${accessToken.accessType} access to your records.`,
+    }).catch((err) => console.error("[NOTIFICATION] Failed to create:", err.message));
 
     return res.status(200).json({ status: "success", data: pa });
   } catch (err) {

@@ -21,7 +21,7 @@ const hospitalForgotPassword = handelAsyncFunction(async (req, res, next) => {
   hospital.tokenExpires = expire;
   await hospital.save();
 
-  const link = `${req.protocol}://${req.get("host")}/api/hospital/reset-password/${resetToken}`;
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${resetToken}?role=hospital`;
 
   const mailRes = await mailForgotPassword(hospital.name, link, hospital.email);
   if (!mailRes || mailRes.success === false) {

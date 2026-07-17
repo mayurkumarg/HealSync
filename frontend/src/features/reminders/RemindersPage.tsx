@@ -14,6 +14,7 @@ import {
   Skeleton,
   ConfirmDialog,
   Tooltip,
+  Alert,
 } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -36,7 +37,7 @@ export default function RemindersPage() {
   const [editing, setEditing] = useState<Reminder | null>(null)
   const [toDelete, setToDelete] = useState<Reminder | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['reminders', 'list'], queryFn: remindersApi.list })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['reminders', 'list'], queryFn: remindersApi.list })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['reminders'] })
 
@@ -104,6 +105,10 @@ export default function RemindersPage() {
             <Skeleton key={i} className="h-20 w-full rounded-2xl" />
           ))}
         </div>
+      ) : isError ? (
+        <Alert tone="danger" title="Can't load reminders">
+          Something went wrong fetching your reminders. Try refreshing the page.
+        </Alert>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<BellRing className="h-7 w-7" />}

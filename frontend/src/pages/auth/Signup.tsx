@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { MailCheck, MapPin, Check, ShieldAlert } from 'lucide-react'
+import { MailCheck, MapPin, Check, ShieldAlert, Eye, EyeOff } from 'lucide-react'
 import { AuthLayout } from './AuthLayout'
 import { RoleSelector } from './RoleSelector'
 import { Button, Field, Input, Select, Alert } from '@/components/ui'
@@ -19,6 +19,7 @@ export default function Signup() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
   const [result, setResult] = useState<Result>(null)
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set())
   const { signup } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
@@ -32,6 +33,15 @@ export default function Signup() {
   } = useForm<Record<string, string>>()
 
   const fields = signupFields[role]
+
+  const togglePasswordVisible = (name: string) => {
+    setVisiblePasswords((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   const detectLocation = () => {
     if (!navigator.geolocation) return toast.error('Location unavailable', 'Your browser does not support geolocation.')
@@ -52,9 +62,6 @@ export default function Signup() {
   const onSubmit = async (values: Record<string, string>) => {
     if (values.password !== values.confirmPassword) {
       return toast.error('Passwords do not match', 'Please re-check and try again.')
-    }
-    if (roleNeedsLocation(role) && !coords) {
-      return toast.error('Location required', 'Please capture your facility location to continue.')
     }
     setSubmitting(true)
     try {
@@ -140,6 +147,26 @@ export default function Signup() {
                   invalid={!!errors[f.name]}
                   {...register(f.name, f.rules)}
                 />
+              ) : f.type === 'password' ? (
+                <Input
+                  id={f.name}
+                  type={visiblePasswords.has(f.name) ? 'text' : 'password'}
+                  placeholder={f.placeholder}
+                  autoComplete={f.autoComplete}
+                  invalid={!!errors[f.name]}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisible(f.name)}
+                      className="hover:text-foreground"
+                      tabIndex={-1}
+                      aria-label={visiblePasswords.has(f.name) ? 'Hide password' : 'Show password'}
+                    >
+                      {visiblePasswords.has(f.name) ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                    </button>
+                  }
+                  {...register(f.name, f.rules)}
+                />
               ) : (
                 <Input
                   id={f.name}
@@ -165,12 +192,12 @@ export default function Signup() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-foreground">
-                {coords ? 'Location captured' : locating ? 'Detecting location…' : 'Set facility location'}
+                {coords ? 'Location captured' : locating ? 'Detecting location…' : 'Share precise location (optional)'}
               </span>
               <span className="block text-xs text-muted-foreground">
                 {coords
                   ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)} — tap to update`
-                  : 'Used so patients can find you nearby'}
+                  : "We'll use your address if you skip this"}
               </span>
             </span>
             {coords && <Check className="h-5 w-5 text-success" />}

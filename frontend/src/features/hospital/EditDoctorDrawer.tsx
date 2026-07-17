@@ -42,6 +42,14 @@ export function EditDoctorDrawer({ doctor, open, onClose }: { doctor: Doctor | n
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not update doctor.'),
   })
 
+  const submit = () => {
+    setError(null)
+    if (!form.name || !form.phone_no || !form.specialization) {
+      return setError('Please fill in all required fields.')
+    }
+    update.mutate()
+  }
+
   return (
     <Drawer
       open={open}
@@ -51,16 +59,16 @@ export function EditDoctorDrawer({ doctor, open, onClose }: { doctor: Doctor | n
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={update.isPending}>Cancel</Button>
-          <Button onClick={() => update.mutate()} loading={update.isPending}>Save changes</Button>
+          <Button onClick={submit} loading={update.isPending}>Save changes</Button>
         </>
       }
     >
       <div className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
-        <Field label="Full name"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-        <Field label="Phone"><Input value={form.phone_no} onChange={(e) => setForm({ ...form, phone_no: e.target.value })} /></Field>
+        <Field label="Full name" required><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+        <Field label="Phone" required><Input value={form.phone_no} onChange={(e) => setForm({ ...form, phone_no: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Specialization"><Input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} /></Field>
+          <Field label="Specialization" required><Input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} /></Field>
           <Field label="Experience (yrs)"><Input type="number" value={form.experienceYears} onChange={(e) => setForm({ ...form, experienceYears: e.target.value })} /></Field>
         </div>
         <Field label="License no."><Input value={form.licenseNo} onChange={(e) => setForm({ ...form, licenseNo: e.target.value })} /></Field>

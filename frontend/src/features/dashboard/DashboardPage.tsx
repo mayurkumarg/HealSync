@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -7,21 +8,28 @@ import {
   Share2,
   FolderHeart,
   ArrowRight,
-  Sparkles,
   Pill,
   Plus,
   CalendarClock,
+  Stethoscope,
+  Rocket,
+  CheckCircle2,
+  Circle,
+  X,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { ComingSoon } from '@/components/shared/ComingSoon'
-import { Card, CardHeader, Badge, Button, EmptyState, Skeleton } from '@/components/ui'
+import { CriticalInfoBanner } from '@/components/shared/CriticalInfoBanner'
+import { Card, CardHeader, Badge, Button, EmptyState, Skeleton, Alert } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { remindersApi } from '@/api/reminders'
 import { vitalsApi } from '@/api/vitals'
 import { accessApi } from '@/api/access'
 import { documentsApi } from '@/api/documents'
-import { friendlyDay, formatTime } from '@/lib/format'
+import { consultationsApi } from '@/api/consultations'
+import { formEntryApi } from '@/api/formEntry'
+import { friendlyDay, formatTime, formatDateTime } from '@/lib/format'
 import { reminderTypeMeta, priorityTone } from '@/features/reminders/meta'
 
 export default function DashboardPage() {
@@ -33,11 +41,30 @@ export default function DashboardPage() {
   const sugar = useQuery({ queryKey: ['vitals', 'sugar'], queryFn: vitalsApi.getSugar })
   const grants = useQuery({ queryKey: ['access', 'list'], queryFn: accessApi.list })
   const docs = useQuery({ queryKey: ['documents'], queryFn: documentsApi.list })
+  const consultations = useQuery({ queryKey: ['consultations', 'mine', 'upcoming'], queryFn: () => consultationsApi.mine('upcoming') })
+  const nextConsultation = consultations.data?.[0]
+  const formEntries = useQuery({ queryKey: ['form-entries', user?.id], queryFn: () => formEntryApi.list(user!.id), enabled: !!user })
 
   const latestBp = bp.data?.readings?.at(-1)
   const latestSugar = sugar.data?.readings?.at(-1)
   const activeShares = grants.data?.filter((g) => g.isActive).length ?? 0
   const firstName = user?.name?.split(' ')[0] || 'there'
+  const anyError = [upcoming, bp, sugar, grants, docs, consultations].some((q) => q.isError)
+
+  const onboardingKey = `healsync_onboarding_dismissed_${user?.id}`
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => localStorage.getItem(onboardingKey) === '1')
+  const stillLoading = [upcoming, bp, sugar, grants, docs].some((q) => q.isLoading)
+  const checklist = [
+    { label: 'Log your first vital reading', done: !!latestBp || !!latestSugar, to: '/app/vitals' },
+    { label: 'Set a reminder', done: (upcoming.data?.length ?? 0) > 0, to: '/app/reminders' },
+    { label: 'Upload a health document', done: (docs.data?.length ?? 0) > 0, to: '/app/documents' },
+    { label: 'Share access with a doctor', done: activeShares > 0, to: '/app/sharing' },
+  ]
+  const showOnboarding = !onboardingDismissed && !stillLoading && checklist.every((c) => !c.done)
+  const dismissOnboarding = () => {
+    localStorage.setItem(onboardingKey, '1')
+    setOnboardingDismissed(true)
+  }
 
   return (
     <div>
@@ -50,6 +77,57 @@ export default function DashboardPage() {
           </Link>
         }
       />
+
+      {anyError && (
+        <Alert tone="danger" title="Some data couldn't load" className="mb-6">
+          Part of your dashboard failed to load. Try refreshing the page.
+        </Alert>
+      )}
+
+      {showOnboarding && (
+        <Card padded className="mb-6 bg-gradient-to-br from-primary/5 to-accent/5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                <Rocket className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground">Get started with HealSync</h3>
+                <p className="text-xs text-muted-foreground">A few quick steps to set up your health profile</p>
+              </div>
+            </div>
+            <button
+              onClick={dismissOnboarding}
+              aria-label="Dismiss"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {checklist.map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                className="flex items-center gap-2.5 rounded-xl border border-border bg-surface-2/40 p-3 text-sm transition-colors hover:border-primary/40"
+              >
+                {item.done ? (
+                  <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-success" />
+                ) : (
+                  <Circle className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className={item.done ? 'text-muted-foreground line-through' : 'text-foreground'}>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {formEntries.data && formEntries.data.length > 0 && (
+        <div className="mb-6">
+          <CriticalInfoBanner entries={formEntries.data} />
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -153,14 +231,43 @@ export default function DashboardPage() {
               <QuickAction to="/app/sharing" icon={<Share2 className="h-5 w-5" />} label="Share records" />
               <QuickAction to="/app/pharmacy" icon={<Pill className="h-5 w-5" />} label="Find medicine" />
               <QuickAction to="/app/vitals" icon={<HeartPulse className="h-5 w-5" />} label="Log vitals" />
-              <QuickAction to="/app/assistant" icon={<Sparkles className="h-5 w-5" />} label="Ask AI" />
+              <QuickAction to="/app/consultations" icon={<Stethoscope className="h-5 w-5" />} label="Consult a doctor" />
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Next consultation"
+              subtitle={nextConsultation ? undefined : 'Nothing scheduled'}
+              icon={<Stethoscope className="h-5 w-5" />}
+            />
+            <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+              {consultations.isLoading ? (
+                <Skeleton className="h-12 w-full rounded-xl" />
+              ) : nextConsultation ? (
+                <div className="rounded-xl border border-border bg-surface-2/40 p-3.5">
+                  <p className="text-sm font-semibold text-foreground">
+                    Dr. {typeof nextConsultation.doctorId === 'object' ? nextConsultation.doctorId.name : 'Doctor'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(nextConsultation.scheduledAt)}</p>
+                  <Badge tone={nextConsultation.status === 'confirmed' ? 'primary' : 'warning'} className="mt-2">
+                    {nextConsultation.status === 'confirmed' ? 'Confirmed' : 'Awaiting confirmation'}
+                  </Badge>
+                </div>
+              ) : (
+                <Link to="/app/consultations">
+                  <Button variant="outline" fullWidth rightIcon={<ArrowRight className="h-4 w-4" />}>
+                    Book a consultation
+                  </Button>
+                </Link>
+              )}
             </div>
           </Card>
 
           <Card>
             <CardHeader
               title="Health wallet"
-              subtitle={`${docs.data?.documents.length ?? 0} documents`}
+              subtitle={`${docs.data?.length ?? 0} documents`}
               icon={<FolderHeart className="h-5 w-5" />}
             />
             <div className="px-5 pb-5 sm:px-6 sm:pb-6">

@@ -55,16 +55,16 @@ const phone = (name = 'phone_no', label = 'Phone number'): SignupField => ({
 
 export const signupFields: Record<Role, SignupField[]> = {
   patient: [
-    { name: 'name', label: 'Full name', placeholder: 'Ananya Sharma', autoComplete: 'name', half: true, rules: { required: 'Name is required', minLength: { value: 2, message: 'Too short' } } },
-    { name: 'username', label: 'Username', placeholder: 'ananya', half: true, rules: { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' }, pattern: { value: /^\S+$/, message: 'No spaces' } } },
+    { name: 'name', label: 'Full name', placeholder: 'Your full name', autoComplete: 'name', half: true, rules: { required: 'Name is required', minLength: { value: 2, message: 'Too short' } } },
+    { name: 'username', label: 'Username', placeholder: 'Choose a username', half: true, rules: { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' }, pattern: { value: /^\S+$/, message: 'No spaces' } } },
     email,
     phone(),
     password,
     confirm,
   ],
   doctor: [
-    { name: 'name', label: 'Full name', placeholder: 'Dr. Rahul Mehta', autoComplete: 'name', half: true, rules: { required: 'Name is required' } },
-    { name: 'username', label: 'Username', placeholder: 'dr.rahul', half: true, rules: { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' } } },
+    { name: 'name', label: 'Full name', placeholder: 'Dr. Your full name', autoComplete: 'name', half: true, rules: { required: 'Name is required' } },
+    { name: 'username', label: 'Username', placeholder: 'Choose a username', half: true, rules: { required: 'Username is required', minLength: { value: 3, message: 'Min 3 characters' } } },
     email,
     phone(),
     { name: 'specialization', label: 'Specialization', placeholder: 'Cardiology', half: true, rules: { required: 'Specialization is required' } },

@@ -28,14 +28,12 @@ export default async function scanWeb(req, res) {
     const patient = await User.findById(accessToken.patientId).lean();
     if (!patient) return res.status(404).send("<h3>Patient not found.</h3>");
 
-    // Build minimal patient display
+    // Build minimal patient display. Note: age/gender/emergencyContact aren't fields on the User
+    // model — deliberately not displayed here rather than always rendering "Not specified."
     const safeData = {
       name: patient.name || "—",
       email: patient.email || "—",
       phone_no: patient.phone_no || "—",
-      age: patient.age || "",
-      gender: patient.gender || "",
-      emergencyContact: patient.emergencyContact || ""
     };
 
     // Permission labels
@@ -51,7 +49,7 @@ export default async function scanWeb(req, res) {
       : `Valid for ${accessToken.expiryDuration.replace('hours', ' Hours').replace('days', ' Days')} (until ${new Date(accessToken.expiresAt).toLocaleString()})`;
 
     // Frontend claim URL - doctor will be redirected to login if not authenticated
-    const claimUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/doctor/claim-access?token=${encodeURIComponent(token)}`;
+    const claimUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/doctor/claim-access?token=${encodeURIComponent(token)}`;
     
     const html = `
       <!doctype html>
@@ -246,20 +244,8 @@ export default async function scanWeb(req, res) {
                 <span class="info-value">${safeData.name}</span>
               </div>
               <div class="info-row">
-                <span class="info-label">Age</span>
-                <span class="info-value">${safeData.age || 'Not specified'}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Gender</span>
-                <span class="info-value">${safeData.gender || 'Not specified'}</span>
-              </div>
-              <div class="info-row">
                 <span class="info-label">Contact</span>
                 <span class="info-value">${safeData.phone_no}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Emergency</span>
-                <span class="info-value">${safeData.emergencyContact || 'Not specified'}</span>
               </div>
             </div>
 

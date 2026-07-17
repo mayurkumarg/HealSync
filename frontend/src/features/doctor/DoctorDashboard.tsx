@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Users, Clock, UserPlus, QrCode, ArrowRight, Sparkles, Stethoscope, ShieldCheck } from 'lucide-react'
+import { Users, Clock, UserPlus, QrCode, ArrowRight, CalendarClock, Stethoscope, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
-import { Card, CardHeader, Button, Badge, EmptyState, Avatar, Skeleton } from '@/components/ui'
+import { Card, CardHeader, Button, Badge, EmptyState, Avatar, Skeleton, Alert } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { doctorApi } from '@/api/doctor'
-import { countdown } from '@/lib/format'
+import { consultationsApi } from '@/api/consultations'
+import { countdown, formatTime } from '@/lib/format'
 import { RequestAccessDrawer } from './RequestAccessDrawer'
 import { ClaimCodeModal } from './ClaimCodeModal'
 
@@ -15,7 +16,9 @@ export default function DoctorDashboard() {
   const { user } = useAuth()
   const [requestOpen, setRequestOpen] = useState(false)
   const [claimOpen, setClaimOpen] = useState(false)
-  const { data, isLoading } = useQuery({ queryKey: ['doctor', 'patients'], queryFn: doctorApi.listPatients })
+  const { data, isLoading, isError } = useQuery({ queryKey: ['doctor', 'patients'], queryFn: doctorApi.listPatients })
+  const today = useQuery({ queryKey: ['consultations', 'doctor', 'today'], queryFn: () => consultationsApi.doctorList('today') })
+  const anyError = isError || today.isError
 
   const expiringSoon = useMemo(() => {
     return (data ?? []).filter((a) => {
@@ -44,6 +47,12 @@ export default function DoctorDashboard() {
         }
       />
 
+      {anyError && (
+        <Alert tone="danger" title="Some data couldn't load" className="mb-6">
+          Part of your dashboard failed to load. Try refreshing the page.
+        </Alert>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Patients with access"
@@ -60,13 +69,47 @@ export default function DoctorDashboard() {
           tone="warning"
         />
         <StatCard
-          label="AI summaries"
-          value="Ready"
-          hint="Per-patient insights"
-          icon={<Sparkles className="h-5 w-5" />}
+          label="Today's consultations"
+          value={today.data?.length ?? 0}
+          hint="Scheduled today"
+          icon={<CalendarClock className="h-5 w-5" />}
           tone="accent"
         />
       </div>
+
+      {(today.data?.length ?? 0) > 0 && (
+        <Card className="mt-6">
+          <CardHeader
+            title="Today's consultations"
+            subtitle="Your schedule for today"
+            icon={<CalendarClock className="h-5 w-5" />}
+            action={
+              <Link to="/app/doctor/consultations">
+                <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                  View all
+                </Button>
+              </Link>
+            }
+          />
+          <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+            <ul className="space-y-2.5">
+              {today.data!.slice(0, 5).map((c) => {
+                const patient = typeof c.patientId === 'object' ? c.patientId : null
+                return (
+                  <li key={c._id} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/40 p-3">
+                    <Avatar name={patient?.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">{patient?.name || 'Patient'}</p>
+                      <p className="text-xs text-muted-foreground">{formatTime(c.scheduledAt)}</p>
+                    </div>
+                    <Badge tone={c.status === 'confirmed' ? 'primary' : 'warning'}>{c.status === 'confirmed' ? 'Confirmed' : 'Requested'}</Badge>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        </Card>
+      )}
 
       <Card className="mt-6">
         <CardHeader

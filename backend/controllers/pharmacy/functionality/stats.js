@@ -12,7 +12,11 @@ export const getAllStats = async (req, res) => {
     const since = new Date();
     since.setDate(since.getDate() - updatesDays);
 
+    const pharmacyId = new mongoose.Types.ObjectId(req.user.id);
+    const scopeToPharmacy = { $match: { pharmacyId } };
+
     const totalValuePerPharmacyPipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$pharmacyId",
@@ -25,6 +29,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const totalQuantityPerMedicinePipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$medicineId",
@@ -38,6 +43,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const distinctMedicinesPerPharmacyPipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$pharmacyId",
@@ -54,6 +60,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const lowOutCountsPerPharmacyPipeline = [
+      scopeToPharmacy,
       { $match: { status: { $in: ["low", "out_of_stock"] } } },
       {
         $group: {
@@ -76,6 +83,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const expiringAndExpiredPipeline = [
+      scopeToPharmacy,
       {
         $project: {
           pharmacyId: 1,
@@ -132,6 +140,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const avgPricePerMedicinePipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$medicineId",
@@ -146,6 +155,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const topMedicinesByQuantityPipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$medicineId",
@@ -158,6 +168,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const topMedicinesByValuePipeline = [
+      scopeToPharmacy,
       {
         $group: {
           _id: "$medicineId",
@@ -170,6 +181,7 @@ export const getAllStats = async (req, res) => {
     ];
 
     const updatesPerDayPipeline = [
+      scopeToPharmacy,
       { $match: { updatedAt: { $gte: since } } },
       {
         $group: {

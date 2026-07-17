@@ -5,7 +5,6 @@ import PharmacyStock from "../../../models/medical/pharmacyStock.js";
 
 const addStock = handelAsyncFunction(async (req, res, next) => {
   const pharmacyId = req.user.id; // linked to your schema
-    console.log("Pharmacy ID:", pharmacyId);
   const {
     brandName,
     genericName,

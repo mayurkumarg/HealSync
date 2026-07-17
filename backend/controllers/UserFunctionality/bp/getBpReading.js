@@ -1,6 +1,7 @@
 import handelAsyncFunction from "../../../utils/asyncFunctionHandler.js";
 import CustomError from "../../../utils/customError.js";
 import BPTracking from "../../../models/bp.js";
+import { resetDailyIntakeIfNeeded } from "../../../utils/resetDailyIntake.js";
 
 /**
  * @desc   Get BP readings OR BP document (not both)
@@ -30,6 +31,9 @@ const getBpReadings = handelAsyncFunction(async (req, res, next) => {
      * OPTION 1 → RETURN ONLY DOCUMENT
      * ------------------------------------------------- */
     if (include === "document") {
+        resetDailyIntakeIfNeeded(bpProfile);
+        await bpProfile.save().catch(() => {});
+
         return res.status(200).json({
             status: "success",
             message: "BP medication document fetched successfully.",
@@ -38,7 +42,8 @@ const getBpReadings = handelAsyncFunction(async (req, res, next) => {
                 dosage: bpProfile.dosage,
                 tabletsPerDay: bpProfile.tabletsPerDay,
                 stockAvailable: bpProfile.stockAvailable,
-                recentSuggestion: bpProfile.recentSuggestion
+                recentSuggestion: bpProfile.recentSuggestion,
+                todaysIntake: bpProfile.todaysIntake
             }
         });
     }

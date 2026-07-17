@@ -2,6 +2,7 @@ import cron from "node-cron";
 import bpTracking from "../../models/bp.js";
 import sugarTracking from "../../models/sugar.js";
 import {sendDrugRefillReminderEmail} from "../../service/email.js";
+import { resetDailyIntakeIfNeeded } from "../resetDailyIntake.js";
 
 /**
  * Reminder Job
@@ -9,16 +10,18 @@ import {sendDrugRefillReminderEmail} from "../../service/email.js";
  */
 export const reminderJob = async (schedule) => {
   try {
-    // Fetch all BP + Sugar tracking documents
+    // Narrow the query to only docs that could possibly need a dose today — was previously an
+    // unfiltered find({}) scanning the entire collection three times a day.
+    const filter = { tabletsPerDay: { $gt: 0 }, stockAvailable: { $ne: null } };
     const [bpDocs, sugarDocs] = await Promise.all([
-      bpTracking.find({}).populate("userId").exec(),
-      sugarTracking.find({}).populate("userId").exec(),
+      bpTracking.find(filter).populate("userId").exec(),
+      sugarTracking.find(filter).populate("userId").exec(),
     ]);
 
     // Merge both lists
     const entries = [
-      ...bpDocs.map((doc) => ({ type: "bp", doc })),
-      ...sugarDocs.map((doc) => ({ type: "sugar", doc })),
+      ...bpDocs.map((doc) => ({ type: "bp", doc, Model: bpTracking })),
+      ...sugarDocs.map((doc) => ({ type: "sugar", doc, Model: sugarTracking })),
     ];
 
     // Tablets per day → which reminders apply
@@ -29,33 +32,46 @@ export const reminderJob = async (schedule) => {
       return ["M", "A", "E"]; // default 3/day
     };
 
-    // Process each document
+    // Collect per-doc updates and flush as one batched bulkWrite per model instead of a
+    // sequential await-per-document save loop — same decision logic, one round-trip instead of N.
+    const bulkOpsByModel = new Map();
+    const refillNotifications = [];
+
     for (const item of entries) {
       const doc = item.doc;
-
       const { tabletsPerDay, stockAvailable } = doc;
-      let todaysIntake = typeof doc.todaysIntake === "number" ? doc.todaysIntake : 0;
 
-      if (!tabletsPerDay || stockAvailable == null) continue;
+      resetDailyIntakeIfNeeded(doc); // zero todaysIntake if it's a new day since the last dose
+      const todaysIntake = typeof doc.todaysIntake === "number" ? doc.todaysIntake : 0;
 
       const activeSlots = getActiveSlots(tabletsPerDay);
       if (!activeSlots.includes(schedule)) continue;
-
       if (todaysIntake >= tabletsPerDay) continue; // prevent overdose
 
-      // Deduct stock + increase intake
-      doc.stockAvailable = Math.max(0, Number(stockAvailable) - 1);
-      doc.todaysIntake = todaysIntake + 1;
+      const newStock = Math.max(0, Number(stockAvailable) - 1);
+      const newIntake = todaysIntake + 1;
 
-      // If save fails → silently skip
-      await doc.save().catch(() => {});
-      
-      // Low stock notification (< 7 tablets)
-      if (doc.stockAvailable <= 7) {
-          sendDrugRefillReminderEmail(item.doc.userId,item.type,item.doc);
+      if (!bulkOpsByModel.has(item.Model)) bulkOpsByModel.set(item.Model, []);
+      bulkOpsByModel.get(item.Model).push({
+        updateOne: {
+          filter: { _id: doc._id },
+          update: { $set: { stockAvailable: newStock, todaysIntake: newIntake, lastIntakeDate: doc.lastIntakeDate } },
+        },
+      });
+
+      if (newStock <= 7) {
+        refillNotifications.push(() =>
+          sendDrugRefillReminderEmail(doc.userId, item.type, { ...doc.toObject(), stockAvailable: newStock })
+        );
       }
     }
 
+    await Promise.all(
+      [...bulkOpsByModel.entries()].map(([Model, ops]) => (ops.length ? Model.bulkWrite(ops) : null))
+    );
+    // Email sends stay best-effort/fire-and-forget, same as before — a failed email shouldn't
+    // block the batch write that already succeeded.
+    refillNotifications.forEach((send) => send().catch(() => {}));
   } catch (err) {
     // Prevent cron from crashing
     // reportCronError(err); (optional)

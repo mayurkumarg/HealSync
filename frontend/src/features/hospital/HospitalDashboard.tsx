@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
-import { Card, CardHeader, Button, Progress, Skeleton, EmptyState } from '@/components/ui'
+import { Card, CardHeader, Button, Progress, Skeleton, EmptyState, Alert } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { hospitalApi } from '@/api/hospital'
 import { AddDoctorDrawer } from './AddDoctorDrawer'
@@ -24,6 +24,7 @@ export default function HospitalDashboard() {
 
   const stats = useQuery({ queryKey: ['hospital', 'stats'], queryFn: hospitalApi.doctorStats })
   const profile = useQuery({ queryKey: ['hospital', 'me'], queryFn: hospitalApi.me })
+  const anyError = stats.isError || profile.isError
 
   const s = stats.data
   const total = s?.totalDoctors ?? 0
@@ -37,6 +38,12 @@ export default function HospitalDashboard() {
         description="Your facility overview and clinical team at a glance."
         action={<Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>Add doctor</Button>}
       />
+
+      {anyError && (
+        <Alert tone="danger" title="Some data couldn't load" className="mb-6">
+          Part of your dashboard failed to load. Try refreshing the page.
+        </Alert>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total doctors" value={total} icon={<Stethoscope className="h-5 w-5" />} tone="primary" hint="On your team" />

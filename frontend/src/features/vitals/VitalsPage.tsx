@@ -22,6 +22,7 @@ import {
   TabsTrigger,
   EmptyState,
   LoadingState,
+  Alert,
   Table,
   THead,
   TBody,
@@ -102,6 +103,10 @@ export default function VitalsPage() {
 
       {active.isLoading ? (
         <LoadingState label="Loading your readings…" />
+      ) : active.isError ? (
+        <Alert tone="danger" title="Can't load your readings">
+          Something went wrong fetching your vitals. Try refreshing the page.
+        </Alert>
       ) : !profile ? (
         <EmptyState
           icon={kind === 'bp' ? <HeartPulse className="h-7 w-7" /> : <Droplet className="h-7 w-7" />}

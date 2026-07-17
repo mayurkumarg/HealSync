@@ -26,14 +26,20 @@ const createUser = handelAsyncFunction(async (req, res, next) => {
 
   // Update if user exists but not verified
   if (userExists && !userExists.verified) {
+    // SECURITY: allowlist the fields a re-signup is allowed to touch. Spreading the raw req.body
+    // into the update let a client set `verified`/`role` (or any other schema field) directly,
+    // bypassing email verification entirely — never spread untrusted input into a Mongoose update.
     await userModel.findOneAndUpdate(
       { email },
       {
-        ...req.body,
+        name: req.body.name,
+        username: req.body.username,
+        phone_no: req.body.phone_no,
         password: await bcrypt.hash(
           req.body.password,
           parseInt(process.env.SALTROUNDS) || 10
         ),
+        verified: false,
         tokenExpires: expireTime,
         token: verificationToken,
       }
@@ -41,15 +47,20 @@ const createUser = handelAsyncFunction(async (req, res, next) => {
   } else {
     // Create new user
     await userModel.create({
-      ...req.body,
+      name: req.body.name,
+      username: req.body.username,
+      email: req.body.email,
+      phone_no: req.body.phone_no,
+      password: req.body.password,
       tokenExpires: expireTime,
       verified: false,
       token: verificationToken,
     });
   }
 
-  // Build verification link
-  const link = `${req.protocol}://${req.get("host")}/api/auth/verify/${verificationToken}`;
+  // Build verification link — points at the frontend's VerifyEmail page, which calls the
+  // matching role-specific backend verify endpoint itself.
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=patient`;
 
   // Send verification email
   const mailerRes = await mail(req.body.name, link, email, next);

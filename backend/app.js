@@ -24,8 +24,17 @@ import hospitalRouter from "./routes/hospitalRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
 import doctorAccessRouter from "./routes/doctorAccessRoute.js";
 import accessRouter from "./routes/accessRoute.js";
+import notificationRoute from "./routes/notificationRoute.js";
+import consultationRoute from "./routes/consultationRoute.js";
+import auditRoute from "./routes/auditRoute.js";
+import timelineRoute from "./routes/timelineRoute.js";
 
 const app = express();
+
+// Deployed behind a reverse proxy (Render, etc.) — without this, express-rate-limit and every
+// req.ip read (e.g. the audit-log IP in middleware/documentAccess.js) see the proxy's IP for
+// every request instead of the real client's, silently breaking per-user rate limiting.
+app.set("trust proxy", 1);
 
 /* ------------------------------------------------------
    SECURITY HARDENING
@@ -46,7 +55,7 @@ app.use(
 ------------------------------------------------------ */
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -66,6 +75,10 @@ app.use("/api/user", userFuncRoutes);
 app.use("/api/pharmacy", pharmacyRouter);
 app.use("/api/medicine", medicineRouter);
 app.use("/api/reminders", reminderRouter);
+app.use("/api/notifications", notificationRoute);
+app.use("/api/consultations", consultationRoute);
+app.use("/api/audit", auditRoute);
+app.use("/api/timeline", timelineRoute);
 
 /* ------------------------------------------------------
    AI & ML ROUTES  (MUST BE BEFORE 404)

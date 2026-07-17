@@ -47,10 +47,7 @@ const requestAccessByDoctor = handelAsyncFunction(async (req, res, next) => {
 
   // Send OTP via phone/WhatsApp - this generates and stores the OTP
   const otpResult = await sendOtpToPhone(patient.phone_no, 'doctor-access-request', 6, 600);
-  
-  // Log the result for debugging
-  console.log('OTP Send Result:', otpResult);
-  
+
   if (!otpResult.ok && otpResult.via === 'whatsapp-error') {
     console.error('WhatsApp sending failed, but continuing with stored OTP for testing');
     // Don't fail the request - OTP is logged in console for development

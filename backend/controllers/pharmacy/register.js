@@ -4,6 +4,7 @@ import mail from "../../service/email.js";
 import bcrypt from "bcrypt";
 import CustomError from "../../utils/customError.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
+import { resolveGeoLocation } from "../../utils/resolveGeoLocation.js";
 
 const createPharmacy = handelAsyncFunction(async (req, res, next) => {
   // ^ Step 1: Validate request body
@@ -11,7 +12,12 @@ const createPharmacy = handelAsyncFunction(async (req, res, next) => {
     return next(new CustomError(400, "No data was sent."));
   }
 
-  const { email, contactNo } = req.body;
+  const { email, contactNo, address, geoLocation } = req.body;
+
+  // ^ Step 1b: Resolve location — use given coordinates, or geocode the address as a fallback
+  // for when the browser couldn't/wouldn't share device geolocation.
+  const resolvedGeoLocation = await resolveGeoLocation({ geoLocation, address });
+  req.body.geoLocation = resolvedGeoLocation;
 
   // ^ Step 2: Check if pharmacy already exists (by email or contact)
   const existingPharmacy = await Pharmacy.findOne({
@@ -47,9 +53,7 @@ const createPharmacy = handelAsyncFunction(async (req, res, next) => {
   }
 
   // ^ Step 5: Generate email verification link
-  const link = `${req.protocol}://${req.get(
-    "host"
-  )}/api/pharmacy/verify/${verificationToken}`;
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=pharmacy`;
 
   // ^ Step 6: Send verification email
   const mailerRes = await mail(req.body.name, link, email, next);

@@ -73,10 +73,10 @@ export function AuthLayout({
           <div className="relative rounded-2xl bg-white/10 p-5 backdrop-blur">
             <Quote className="mb-2 h-5 w-5 text-white/60" />
             <p className="text-sm text-white/90">
-              “I walked into a new clinic and shared my full history in seconds. No files, no repeated
+              “Walk into any clinic and share your full history in seconds. No files, no repeated
               tests.”
             </p>
-            <p className="mt-2 text-xs font-semibold text-white/70">— Ananya, HealSync patient</p>
+            <p className="mt-2 text-xs font-semibold text-white/70">The HealSync promise</p>
           </div>
         </div>
       </div>

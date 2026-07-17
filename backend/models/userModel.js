@@ -120,6 +120,12 @@ const userScheme = mongoose.Schema({
     otpExpires: {
         type: Date,
         default: null
+    },
+
+    notificationPrefs: {
+        email: { type: Boolean, default: true },
+        push: { type: Boolean, default: true },
+        sms: { type: Boolean, default: false }
     }
 
 }, {

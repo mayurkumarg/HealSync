@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { Pill, MapPin, Search, Store, IndianRupee, Package, Navigation, PhoneCall } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -24,7 +25,8 @@ export default function PharmacyPage() {
   if (user && user.role !== 'patient') return <ComingSoon />
 
   const toast = useToast()
-  const [query, setQuery] = useState('')
+  const [searchParams] = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get('q') || '')
   const [useLocation, setUseLocation] = useState(false)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [results, setResults] = useState<MedicineSearchResult[] | null>(null)
@@ -39,6 +41,13 @@ export default function PharmacyPage() {
     if (!query.trim()) return
     search.mutate({ medicine: query.trim(), ...(loc ? { lat: loc.lat, lng: loc.lng } : {}) })
   }
+
+  // Auto-run a search once when arriving with a prefilled query (e.g. from a consultation's prescription).
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q?.trim()) search.mutate({ medicine: q.trim() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const toggleLocation = (on: boolean) => {
     setUseLocation(on)

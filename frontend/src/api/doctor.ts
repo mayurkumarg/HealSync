@@ -1,6 +1,5 @@
 import { api } from './client'
-import { mockAiReply } from '@/lib/mock'
-import type { AccessiblePatient, Doctor, MedicalDocument, PatientRecords } from '@/types'
+import type { AccessiblePatient, ChatHistoryTurn, ChatResult, Doctor, MedicalDocument, PatientRecords } from '@/types'
 
 export const doctorApi = {
   me: async (): Promise<Doctor> => {
@@ -51,17 +50,11 @@ export const doctorApi = {
     return data
   },
 
-  /** Doctor AI summary for a patient — falls back to a canned reply if Ollama is offline. */
-  chat: async (question: string, patientId: string): Promise<{ answer: string; isMock: boolean }> => {
-    try {
-      const { data } = await api.post('/doctor/chat', { question, patientId })
-      const answer: string = data.answer ?? ''
-      if (!answer.trim() || /trouble connecting|ollama/i.test(answer)) {
-        return { answer: mockAiReply(question), isMock: true }
-      }
-      return { answer, isMock: false }
-    } catch {
-      return { answer: mockAiReply(question), isMock: true }
-    }
+  /** Doctor AI Assistant — Groq-backed RAG chat grounded in an authorized patient's records.
+   * The backend always replies 200 with a user-friendly `answer` even on failure (rate limits,
+   * misconfiguration, etc.) so the UI never needs a client-side mock fallback. */
+  chat: async (question: string, patientId: string, history: ChatHistoryTurn[] = []): Promise<ChatResult> => {
+    const { data } = await api.post('/doctor/chat', { question, patientId, history })
+    return { answer: data.answer ?? '', sources: data.sources ?? [] }
   },
 }

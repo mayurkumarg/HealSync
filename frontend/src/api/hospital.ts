@@ -7,6 +7,11 @@ export const hospitalApi = {
     return data.data
   },
 
+  updateProfile: async (body: Record<string, unknown>): Promise<Hospital> => {
+    const { data } = await api.patch('/hospital/profile', body)
+    return data.data
+  },
+
   listDoctors: async (): Promise<Doctor[]> => {
     const { data } = await api.get('/hospital/doctors')
     return data.data?.doctors ?? []

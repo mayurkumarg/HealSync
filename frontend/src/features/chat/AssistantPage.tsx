@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Send, User, Bot } from 'lucide-react'
+import { Sparkles, Send, User, Bot, FileText } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ComingSoon } from '@/components/shared/ComingSoon'
 import { Card, Button, Badge } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { chatApi } from '@/api/chat'
+import { formatDate } from '@/lib/format'
 import type { ChatMessage } from '@/types'
 
 const SUGGESTIONS = [
@@ -32,15 +33,24 @@ export default function AssistantPage() {
     const q = text.trim()
     if (!q || thinking) return
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: q, createdAt: Date.now() }
+    const history = messages.map((m) => ({ role: m.role, content: m.content }))
     setMessages((m) => [...m, userMsg])
     setInput('')
     setThinking(true)
-    const { answer } = await chatApi.ask(q)
-    setMessages((m) => [
-      ...m,
-      { id: crypto.randomUUID(), role: 'assistant', content: answer, createdAt: Date.now() },
-    ])
-    setThinking(false)
+    try {
+      const { answer, sources } = await chatApi.ask(q, history)
+      setMessages((m) => [
+        ...m,
+        { id: crypto.randomUUID(), role: 'assistant', content: answer, createdAt: Date.now(), sources },
+      ])
+    } catch {
+      setMessages((m) => [
+        ...m,
+        { id: crypto.randomUUID(), role: 'assistant', content: 'Sorry, I could not reach the AI assistant. Please try again.', createdAt: Date.now() },
+      ])
+    } finally {
+      setThinking(false)
+    }
   }
 
   return (
@@ -125,14 +135,31 @@ function Bubble({ message }: { message: ChatMessage }) {
       >
         {isUser ? <User className="h-4.5 w-4.5" /> : <Bot className="h-4.5 w-4.5" />}
       </div>
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'border border-border bg-surface-2/60 text-foreground'
-        }`}
-      >
-        {message.content}
+      <div className={`max-w-[80%] ${isUser ? '' : 'space-y-2'}`}>
+        <div
+          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+            isUser
+              ? 'bg-primary text-primary-foreground'
+              : 'border border-border bg-surface-2/60 text-foreground'
+          }`}
+        >
+          {message.content}
+        </div>
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {message.sources.map((s, i) => (
+              <span
+                key={i}
+                title={s.date ? formatDate(s.date) : undefined}
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] text-muted-foreground"
+              >
+                <FileText className="h-3 w-3 shrink-0 text-primary" />
+                <span className="truncate">{s.title}</span>
+                {s.date && <span className="shrink-0 text-muted-foreground/70">· {formatDate(s.date)}</span>}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   )

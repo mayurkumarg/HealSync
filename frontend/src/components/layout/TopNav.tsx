@@ -1,6 +1,7 @@
 import { Menu } from 'lucide-react'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { ProfileMenu } from '@/components/shared/ProfileMenu'
+import { NotificationBell } from '@/components/shared/NotificationBell'
 import { useAuth } from '@/context/AuthContext'
 
 export function TopNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
@@ -25,6 +26,7 @@ export function TopNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
+        {user?.role === 'patient' && <NotificationBell />}
         <ThemeToggle />
         <ProfileMenu />
       </div>

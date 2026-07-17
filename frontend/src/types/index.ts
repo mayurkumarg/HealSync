@@ -2,6 +2,17 @@
 
 export type Role = 'patient' | 'doctor' | 'hospital' | 'pharmacy'
 
+export interface PatientProfile {
+  _id: string
+  name: string
+  username: string
+  email: string
+  phone_no: string
+  abhaId?: string | null
+  notificationPrefs?: { email?: boolean; push?: boolean; sms?: boolean }
+  createdAt?: string
+}
+
 export interface AuthUser {
   id: string
   name?: string
@@ -143,6 +154,23 @@ export interface AccessGrant {
   createdAt?: string
 }
 
+export interface RecordAccessEntry {
+  _id: string
+  action: string
+  documentId?: string | null
+  timestamp: string
+  performedBy: { name?: string; role?: string; specialization?: string }
+}
+
+export type TimelineEventType = 'bp_reading' | 'sugar_reading' | 'document' | 'consultation' | 'form_entry'
+
+export interface TimelineEvent {
+  type: TimelineEventType
+  date: string
+  title: string
+  detail?: string | null
+}
+
 export interface ActivityLog {
   _id: string
   action: string
@@ -182,6 +210,44 @@ export interface ChatMessage {
   content: string
   createdAt: number
   pending?: boolean
+  sources?: ChatSource[]
+}
+
+// ---- AI Assistant (Groq RAG chat) ----
+export interface ChatHistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatSource {
+  category: string
+  title: string
+  date?: string
+}
+
+export interface ChatResult {
+  answer: string
+  sources?: ChatSource[]
+}
+
+// ---- Health forms (patient-recorded questionnaire entries) ----
+export type FormEntryCategory =
+  | 'allergies'
+  | 'chronic_conditions'
+  | 'family_history'
+  | 'past_surgeries'
+  | 'current_medications'
+  | 'lifestyle'
+  | 'immunizations'
+  | 'other'
+
+export interface FormEntry {
+  _id: string
+  category: string
+  data?: Record<string, string>
+  description?: string
+  createdAt?: string
+  createdBy?: { name?: string; email?: string }
 }
 
 // ---- Provider: Doctor & Hospital ----
@@ -203,6 +269,7 @@ export interface Doctor {
     verifiedAt?: string | null
     document?: string
   }
+  consultation?: ConsultationSettings
   createdAt?: string
 }
 
@@ -220,6 +287,101 @@ export interface Hospital {
   isOpen?: boolean
   rating?: number
   totalRatings?: number
+  createdAt?: string
+}
+
+export interface Pharmacy {
+  _id: string
+  name: string
+  address?: string
+  contactNo?: string
+  email: string
+  geoLocation?: { type: string; coordinates: [number, number] }
+  verification?: { licenseNo?: string; gstNo?: string; status?: VerificationStatus }
+  verified: boolean
+  isOpen?: boolean
+  openingHours?: { open: string; close: string }
+  rating?: number
+  totalRatings?: number
+  createdAt?: string
+}
+
+export interface Medicine {
+  _id: string
+  genericName: string
+  brandName: string
+  manufacturer?: string
+  dosageForm?: string
+  strength?: string
+}
+
+export interface PharmacyStock {
+  _id: string
+  pharmacyId: string
+  medicineId: string | Medicine
+  quantity: number
+  price: number
+  expiryDate: string
+  batchNo?: string
+  status: 'available' | 'low' | 'out_of_stock'
+  lastUpdated?: string
+  createdAt?: string
+}
+
+export interface PharmacyStats {
+  totalValuePerPharmacy: { _id: string; totalValue: number; totalQuantity: number; itemCount: number }[]
+  totalQuantityPerMedicine: { _id: string; totalQuantity: number; totalValue: number; avgPrice: number }[]
+  distinctMedicinesPerPharmacy: { _id: string; distinctCount: number; distinctMedicines: string[] }[]
+  lowOutCountsPerPharmacy: { _id: string; lowCount: number; outOfStockCount: number; totalAffectedQuantity: number }[]
+  expiringAndExpired: {
+    _id: string
+    expiredQuantity: number
+    expiringSoonQuantity: number
+    expiredBatches: { medicineId: string; batchNo?: string; qty: number; expiryDate: string }[]
+    expiringSoonBatches: { medicineId: string; batchNo?: string; qty: number; expiryDate: string }[]
+  }[]
+  avgPricePerMedicine: { _id: string; avgPrice: number; minPrice: number; maxPrice: number; sampleCount: number }[]
+  topMedicinesByQuantity: { _id: string; totalQuantity: number; totalValue: number }[]
+  topMedicinesByValue: { _id: string; totalValue: number; totalQuantity: number }[]
+  updatesPerDay: { _id: string; updates: number }[]
+}
+
+// ---- Consultations ----
+export type ConsultationStatus = 'requested' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+export type ConsultationMode = 'video' | 'audio' | 'chat' | 'in_person'
+
+export interface ConsultationSettings {
+  enabled: boolean
+  fee: number | null
+  avgMinutes: number
+}
+
+export interface DoctorListing {
+  _id: string
+  name: string
+  specialization?: string | null
+  experienceYears?: number
+  verification?: { status?: VerificationStatus }
+  hospitalId?: { _id: string; name?: string; type?: string } | null
+  consultation: ConsultationSettings
+}
+
+export interface Consultation {
+  _id: string
+  patientId: string | { _id: string; name?: string; email?: string; phone_no?: string }
+  doctorId: string | { _id: string; name?: string; specialization?: string }
+  hospitalId?: string | null
+  scheduledAt: string
+  durationMinutes: number
+  mode: ConsultationMode
+  reason?: string | null
+  fee?: number | null
+  status: ConsultationStatus
+  cancelledBy?: 'patient' | 'doctor' | null
+  cancelReason?: string | null
+  notes?: string | null
+  prescriptionText?: string | null
+  completedAt?: string | null
   createdAt?: string
 }
 
@@ -254,14 +416,7 @@ export interface PatientRecords {
     abhaId?: string | null
     createdAt?: string
   }
-  healthForms: {
-    _id: string
-    category: string
-    data?: unknown
-    description?: string
-    createdAt?: string
-    createdBy?: { name?: string; email?: string }
-  }[]
+  healthForms: FormEntry[]
   documents: MedicalDocument[]
   bpData: BpProfile | null
   sugarData: SugarProfile | null

@@ -2,6 +2,13 @@ import axios, { AxiosError } from 'axios'
 
 const TOKEN_KEY = 'healsync-token'
 
+/** Fired whenever a request comes back 401 and the stored token gets cleared, so AuthContext
+ * (which owns the in-memory `user` state) can react — without this, a token going stale mid-
+ * session leaves the app rendering authenticated pages with no token attached to any request,
+ * cascading into a wall of "You are not logged in" errors on every fetch instead of a clean
+ * bounce to /login. */
+export const SESSION_EXPIRED_EVENT = 'healsync:session-expired'
+
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
@@ -16,6 +23,12 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
 })
+
+/** Socket.IO connects directly to the backend origin (not through the "/api" REST base) — the
+ * server mounts it at the default "/socket.io" path on the same HTTP server as the REST API. */
+export const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (import.meta.env.VITE_API_URL ? new URL(import.meta.env.VITE_API_URL).origin : 'http://localhost:5050')
 
 api.interceptors.request.use((config) => {
   const token = tokenStore.get()
@@ -40,9 +53,11 @@ api.interceptors.response.use(
       const { status, data } = error.response
       const message =
         data?.message || data?.error || defaultMessage(status) || 'Something went wrong.'
-      // A stale/expired token: clear it so the app falls back to the login flow.
+      // A stale/expired token: clear it and tell AuthContext, so the app actually falls back to
+      // the login flow instead of continuing to render authenticated pages with no token.
       if (status === 401 && tokenStore.get()) {
         tokenStore.clear()
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
       }
       return Promise.reject(new ApiError(message, status))
     }

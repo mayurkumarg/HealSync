@@ -51,6 +51,11 @@ const pharmacyStockSchema = new Schema(
   { timestamps: true }
 );
 
+// One stock row per pharmacy+medicine — matches registerStock.js's existing "already stocks
+// this" check, now enforced at the DB level too, and speeds up every stock list/search/stats query.
+pharmacyStockSchema.index({ pharmacyId: 1, medicineId: 1 }, { unique: true });
+pharmacyStockSchema.index({ medicineId: 1 });
+
 pharmacyStockSchema.pre("save", function (next) {
   if (this.quantity === 0) this.status = "out_of_stock";
   else if (this.quantity < 10) this.status = "low";

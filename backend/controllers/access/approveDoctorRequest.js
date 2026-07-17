@@ -3,6 +3,7 @@ import User from "../../models/userModel.js";
 import { logAccessActivity } from "../../utils/activityLogger.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
 import CustomError from "../../utils/customError.js";
+import { Notification } from "../../models/models.js";
 
 /**
  * Doctor submits OTP (that patient received) to complete access request
@@ -69,6 +70,12 @@ const approveDoctorRequest = handelAsyncFunction(async (req, res, next) => {
     },
     req
   });
+
+  Notification.create({
+    userId: patient._id,
+    type: "alert",
+    message: `Dr. ${doctor.name || "your doctor"} now has ${accessRequest.accessType} access to your records.`,
+  }).catch((err) => console.error("[NOTIFICATION] Failed to create:", err.message));
 
   res.status(200).json({
     status: 'success',

@@ -31,9 +31,17 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { accessApi } from '@/api/access'
+import { auditApi } from '@/api/audit'
 import { ApiError } from '@/api/client'
 import { countdown, timeAgo, titleCase } from '@/lib/format'
 import type { AccessGrant, AccessTokenResult } from '@/types'
+
+function describeAccess(action: string) {
+  if (action.includes('/documents')) return 'Viewed your documents'
+  if (action.includes('/form-entry')) return 'Viewed your health background'
+  if (action.includes('records')) return 'Viewed your patient record'
+  return 'Accessed your records'
+}
 
 const DURATIONS = [
   { label: '1 hour', value: '1hour' },
@@ -59,6 +67,7 @@ export default function SharingPage() {
 
   const grants = useQuery({ queryKey: ['access', 'list'], queryFn: accessApi.list })
   const logs = useQuery({ queryKey: ['access', 'logs'], queryFn: accessApi.activityLogs })
+  const recordAccess = useQuery({ queryKey: ['audit', 'mine'], queryFn: auditApi.mine })
 
   const generate = useMutation({
     mutationFn: () => accessApi.generate({ expiryDuration: duration }),
@@ -110,7 +119,7 @@ export default function SharingPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Generate QR/code */}
         <Card>
-          <CardHeader title="Share via QR or code" subtitle="Show this to a doctor to grant access" icon={<QrCode className="h-5 w-5" />} />
+          <CardHeader title="Share via QR or code" subtitle="Best when you're together, or sharing remotely on your terms" icon={<QrCode className="h-5 w-5" />} />
           <div className="px-5 pb-5 sm:px-6 sm:pb-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <Field label="Access duration" className="flex-1">
@@ -129,7 +138,7 @@ export default function SharingPage() {
 
         {/* Grant by phone */}
         <Card>
-          <CardHeader title="Grant by phone number" subtitle="If your doctor is on HealSync" icon={<Phone className="h-5 w-5" />} />
+          <CardHeader title="Grant by phone number" subtitle="Instant, no confirmation needed — use only for a doctor you trust" icon={<Phone className="h-5 w-5" />} />
           <div className="px-5 pb-5 sm:px-6 sm:pb-6">
             <div className="space-y-3">
               <Field label="Doctor's phone number">
@@ -182,7 +191,12 @@ export default function SharingPage() {
                     <UserCog className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-foreground">{doctorName(g)}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-semibold text-foreground">{doctorName(g)}</p>
+                      {g.reason === 'Consultation booking' && (
+                        <Badge tone="primary">From a consultation booking</Badge>
+                      )}
+                    </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Eye className="h-3.5 w-3.5" /> View access
@@ -229,6 +243,36 @@ export default function SharingPage() {
                 </li>
               ))}
             </ol>
+          )}
+        </div>
+      </Card>
+
+      {/* Record access log */}
+      <Card className="mt-6">
+        <CardHeader title="Who viewed your records" subtitle="Every time a doctor with access opened your records" icon={<Eye className="h-5 w-5" />} />
+        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+          {recordAccess.isLoading ? (
+            <Skeleton className="h-20 w-full rounded-xl" />
+          ) : (recordAccess.data?.length ?? 0) === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No one has viewed your records yet.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {recordAccess.data!.map((entry) => (
+                <li key={entry._id} className="flex items-center gap-3 rounded-xl border border-border bg-surface-2/40 p-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+                    <Eye className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {entry.performedBy.name || 'A doctor'}
+                      {entry.performedBy.specialization ? ` (${entry.performedBy.specialization})` : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{describeAccess(entry.action)}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(entry.timestamp)}</span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </Card>

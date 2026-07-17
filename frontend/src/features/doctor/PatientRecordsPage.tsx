@@ -19,6 +19,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { VitalsTrendChart } from '@/components/shared/VitalsTrendChart'
+import { CriticalInfoBanner } from '@/components/shared/CriticalInfoBanner'
 import {
   Card,
   CardHeader,
@@ -35,6 +36,7 @@ import { useToast } from '@/context/ToastContext'
 import { doctorApi } from '@/api/doctor'
 import { formatDate, titleCase, friendlyDay } from '@/lib/format'
 import { reminderTypeMeta, priorityTone } from '@/features/reminders/meta'
+import type { ChatSource } from '@/types'
 
 type Tab = 'overview' | 'vitals' | 'documents' | 'forms' | 'reminders'
 
@@ -110,6 +112,10 @@ export default function PatientRecordsPage() {
             {accessInfo.expiresAt ? `Expires ${formatDate(accessInfo.expiresAt)}` : 'Until revoked'}
           </span>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <CriticalInfoBanner entries={healthForms} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -202,6 +208,16 @@ export default function PatientRecordsPage() {
                       <p className="font-semibold text-foreground">{titleCase(f.category)}</p>
                       <span className="text-xs text-muted-foreground">{formatDate(f.createdAt || '')}</span>
                     </div>
+                    {f.data && Object.keys(f.data).length > 0 && (
+                      <dl className="mt-2 space-y-1 text-sm">
+                        {Object.entries(f.data).map(([k, v]) => (
+                          <div key={k} className="flex gap-2">
+                            <dt className="font-medium text-foreground">{k}:</dt>
+                            <dd className="truncate text-muted-foreground">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
                     {f.description && <p className="mt-1.5 text-sm text-muted-foreground">{f.description}</p>}
                     {f.createdBy?.name && <p className="mt-2 text-xs text-muted-foreground">Recorded by {f.createdBy.name}</p>}
                   </Card>
@@ -268,19 +284,25 @@ function medLine(p?: { drugName?: string | null; dosage?: string | null } | null
 }
 
 function AiSummaryPanel({ patientId, patientName }: { patientId: string; patientName?: string }) {
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string; sources?: ChatSource[] }[]>([])
   const [input, setInput] = useState('')
   const [thinking, setThinking] = useState(false)
 
   const ask = async (q: string) => {
     const question = q.trim()
     if (!question || thinking) return
+    const history = messages.map(({ role, content }) => ({ role, content }))
     setMessages((m) => [...m, { role: 'user', content: question }])
     setInput('')
     setThinking(true)
-    const { answer } = await doctorApi.chat(question, patientId)
-    setMessages((m) => [...m, { role: 'assistant', content: answer }])
-    setThinking(false)
+    try {
+      const { answer, sources } = await doctorApi.chat(question, patientId, history)
+      setMessages((m) => [...m, { role: 'assistant', content: answer, sources }])
+    } catch {
+      setMessages((m) => [...m, { role: 'assistant', content: 'Sorry, I could not reach the AI assistant. Please try again.' }])
+    } finally {
+      setThinking(false)
+    }
   }
 
   return (
@@ -305,8 +327,24 @@ function AiSummaryPanel({ patientId, patientName }: { patientId: string; patient
               <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${m.role === 'user' ? 'bg-surface-2 text-foreground' : 'bg-gradient-to-br from-primary to-accent text-white'}`}>
                 {m.role === 'user' ? <span className="text-[10px] font-bold">You</span> : <Bot className="h-4 w-4" />}
               </div>
-              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60 text-foreground'}`}>
-                {m.content}
+              <div className={`max-w-[85%] ${m.role === 'user' ? '' : 'space-y-1.5'}`}>
+                <div className={`rounded-xl px-3 py-2 text-sm ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface-2/60 text-foreground'}`}>
+                  {m.content}
+                </div>
+                {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.sources.map((s, j) => (
+                      <span
+                        key={j}
+                        title={s.date ? formatDate(s.date) : undefined}
+                        className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        <FileText className="h-2.5 w-2.5 shrink-0 text-primary" />
+                        <span className="truncate">{s.title}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))

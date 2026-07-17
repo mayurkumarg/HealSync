@@ -3,6 +3,7 @@ import Reminder from "../models/medical/reminder.js";
 import { sendReminderNotification } from "./socket.js";
 import { sendReminderEmail } from "./email.js";
 import User from "../models/userModel.js";
+import { Notification } from "../models/models.js";
 
 let scheduledJobs = new Map();
 
@@ -160,10 +161,20 @@ export const sendReminder = async (reminder) => {
       }
     }
 
-    // Update reminder status and add notification record
+    // Update reminder status and add notification record — capped defensively in case a
+    // recurring reminder gets sent many times over its life.
     reminder.sentNotifications.push(notificationRecord);
+    if (reminder.sentNotifications.length > 200) {
+      reminder.sentNotifications = reminder.sentNotifications.slice(-200);
+    }
     reminder.status = "sent";
     await reminder.save();
+
+    Notification.create({
+      userId: reminder.userId._id,
+      type: "reminder",
+      message: `${reminder.title} is due now.`,
+    }).catch((err) => console.error("[NOTIFICATION] Failed to create:", err.message));
 
     console.log(`Reminder ${reminder._id} processed successfully`);
   } catch (error) {

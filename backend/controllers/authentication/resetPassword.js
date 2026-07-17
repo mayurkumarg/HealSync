@@ -115,7 +115,6 @@ const getResetPage = (token) => {
             }
 
             try {
-            console.log("/api/auth/reset-password/${token}")
                 const response = await fetch("/api/auth/reset-password/${token}", {
                     method: "POST",
                     headers: {

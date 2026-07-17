@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { authApi } from '@/api/auth'
-import { api, tokenStore } from '@/api/client'
+import { api, tokenStore, SESSION_EXPIRED_EVENT } from '@/api/client'
 import { decodeJwt, isJwtExpired } from '@/lib/jwt'
+import { useToast } from '@/context/ToastContext'
 import type { AuthUser, Role } from '@/types'
 
 const ROLE_KEY = 'healsync-role'
@@ -37,10 +38,27 @@ function hydrate(): AuthUser | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const toast = useToast()
 
   useEffect(() => {
     setUser(hydrate())
     setLoading(false)
+  }, [])
+
+  // A request coming back 401 mid-session (expired token, server restart invalidating an old
+  // session, etc.) clears the stored token and fires this event — react to it here so the app
+  // actually drops back to the login screen instead of continuing to render authenticated pages
+  // that every subsequent request will silently fail against.
+  useEffect(() => {
+    const onSessionExpired = () => {
+      localStorage.removeItem(ROLE_KEY)
+      localStorage.removeItem(NAME_KEY)
+      setUser(null)
+      toast.warning('Session expired', 'Please sign in again.')
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const login = useCallback(async (role: Role, email: string, password: string) => {
@@ -57,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Doctor/hospital JWTs carry no name — fetch it from their /me endpoint so the UI can greet them.
-    if (nextUser.role === 'doctor' || nextUser.role === 'hospital') {
+    if (nextUser.role === 'doctor' || nextUser.role === 'hospital' || nextUser.role === 'pharmacy') {
       try {
         const { data } = await api.get(`/${nextUser.role}/me`)
         const me = data?.data ?? {}

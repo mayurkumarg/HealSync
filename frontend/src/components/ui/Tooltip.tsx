@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { ReactNode } from 'react'
+import { cloneElement, isValidElement, useState } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 
@@ -13,6 +13,16 @@ export function Tooltip({
   side?: 'top' | 'bottom'
 }) {
   const [show, setShow] = useState(false)
+
+  // When the tooltip text is a plain string and the wrapped control has no accessible name of
+  // its own (typical for icon-only buttons), forward it as aria-label — otherwise a screen
+  // reader only announces "button" since the tooltip text is invisible until hover/focus.
+  const hasOwnLabel = isValidElement(children) && !!(children.props as { 'aria-label'?: string })['aria-label']
+  const trigger =
+    typeof content === 'string' && isValidElement(children) && !hasOwnLabel
+      ? cloneElement(children as ReactElement<{ 'aria-label'?: string }>, { 'aria-label': content })
+      : children
+
   return (
     <span
       className="relative inline-flex"
@@ -21,7 +31,7 @@ export function Tooltip({
       onFocus={() => setShow(true)}
       onBlur={() => setShow(false)}
     >
-      {children}
+      {trigger}
       <AnimatePresence>
         {show && (
           <motion.span

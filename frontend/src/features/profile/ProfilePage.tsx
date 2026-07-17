@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Mail,
   Phone,
@@ -14,10 +15,12 @@ import {
   Fingerprint,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card, CardHeader, Avatar, Badge, Switch, Button, Field, Input } from '@/components/ui'
+import { Card, CardHeader, Avatar, Badge, Switch, Button, Field, Input, Alert } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useToast } from '@/context/ToastContext'
+import { userApi } from '@/api/user'
+import { ApiError } from '@/api/client'
 import { ROLE_LABEL } from '@/routes/nav'
 
 export default function ProfilePage() {
@@ -25,7 +28,42 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme()
   const toast = useToast()
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const isPatient = user?.role === 'patient'
+
+  const profile = useQuery({ queryKey: ['user', 'me'], queryFn: userApi.me, enabled: isPatient })
+
+  const [account, setAccount] = useState({ name: '', phone_no: '' })
   const [prefs, setPrefs] = useState({ email: true, push: true, sms: false })
+
+  useEffect(() => {
+    if (profile.data) {
+      setAccount({ name: profile.data.name ?? '', phone_no: profile.data.phone_no ?? '' })
+      setPrefs({
+        email: profile.data.notificationPrefs?.email ?? true,
+        push: profile.data.notificationPrefs?.push ?? true,
+        sms: profile.data.notificationPrefs?.sms ?? false,
+      })
+    }
+  }, [profile.data])
+
+  const saveAccount = useMutation({
+    mutationFn: () => userApi.updateProfile({ name: account.name, phone_no: account.phone_no }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['user', 'me'] })
+      toast.success('Account details updated')
+    },
+    onError: (err) => toast.error('Could not save', err instanceof ApiError ? err.message : 'Please try again.'),
+  })
+
+  const savePrefs = useMutation({
+    mutationFn: () => userApi.updateProfile({ notificationPrefs: prefs }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['user', 'me'] })
+      toast.success('Preferences saved')
+    },
+    onError: (err) => toast.error('Could not save', err instanceof ApiError ? err.message : 'Please try again.'),
+  })
 
   if (!user) return null
 
@@ -62,7 +100,11 @@ export default function ProfilePage() {
             <CardHeader title="Account details" subtitle="Your personal information" icon={<IdCard className="h-5 w-5" />} />
             <div className="grid gap-4 px-5 pb-5 sm:grid-cols-2 sm:px-6 sm:pb-6">
               <Field label="Full name">
-                <Input value={user.name || ''} readOnly leftIcon={<IdCard className="h-4.5 w-4.5" />} />
+                {isPatient ? (
+                  <Input value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} leftIcon={<IdCard className="h-4.5 w-4.5" />} />
+                ) : (
+                  <Input value={user.name || ''} readOnly leftIcon={<IdCard className="h-4.5 w-4.5" />} />
+                )}
               </Field>
               <Field label="Username">
                 <Input value={user.username || '—'} readOnly leftIcon={<AtSign className="h-4.5 w-4.5" />} />
@@ -71,9 +113,20 @@ export default function ProfilePage() {
                 <Input value={user.email || ''} readOnly leftIcon={<Mail className="h-4.5 w-4.5" />} />
               </Field>
               <Field label="Phone">
-                <Input value={user.phone_no || '—'} readOnly leftIcon={<Phone className="h-4.5 w-4.5" />} />
+                {isPatient ? (
+                  <Input value={account.phone_no} onChange={(e) => setAccount({ ...account, phone_no: e.target.value })} leftIcon={<Phone className="h-4.5 w-4.5" />} />
+                ) : (
+                  <Input value={user.phone_no || '—'} readOnly leftIcon={<Phone className="h-4.5 w-4.5" />} />
+                )}
               </Field>
             </div>
+            {isPatient && (
+              <div className="flex justify-end px-5 pb-5 sm:px-6 sm:pb-6">
+                <Button size="sm" loading={saveAccount.isPending} onClick={() => saveAccount.mutate()}>
+                  Save changes
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Appearance */}
@@ -88,34 +141,45 @@ export default function ProfilePage() {
           </Card>
 
           {/* Notifications */}
-          <Card>
-            <CardHeader title="Notifications" subtitle="How you'd like to be reminded" icon={<Bell className="h-5 w-5" />} />
-            <div className="divide-y divide-border px-5 pb-2 sm:px-6">
-              <PrefRow
-                label="Email notifications"
-                desc="Reminders and health updates by email"
-                checked={prefs.email}
-                onChange={(v) => setPrefs({ ...prefs, email: v })}
-              />
-              <PrefRow
-                label="Push notifications"
-                desc="Real-time alerts in the app"
-                checked={prefs.push}
-                onChange={(v) => setPrefs({ ...prefs, push: v })}
-              />
-              <PrefRow
-                label="SMS notifications"
-                desc="Critical reminders via text message"
-                checked={prefs.sms}
-                onChange={(v) => setPrefs({ ...prefs, sms: v })}
-              />
-            </div>
-            <div className="px-5 py-4 sm:px-6">
-              <Button size="sm" onClick={() => toast.success('Preferences saved')}>
-                Save preferences
-              </Button>
-            </div>
-          </Card>
+          {isPatient ? (
+            <Card>
+              <CardHeader title="Notifications" subtitle="How you'd like to be reminded" icon={<Bell className="h-5 w-5" />} />
+              <div className="divide-y divide-border px-5 pb-2 sm:px-6">
+                <PrefRow
+                  label="Email notifications"
+                  desc="Reminders and health updates by email"
+                  checked={prefs.email}
+                  onChange={(v) => setPrefs({ ...prefs, email: v })}
+                />
+                <PrefRow
+                  label="Push notifications"
+                  desc="Real-time alerts in the app"
+                  checked={prefs.push}
+                  onChange={(v) => setPrefs({ ...prefs, push: v })}
+                />
+                <PrefRow
+                  label="SMS notifications"
+                  desc="Critical reminders via text message"
+                  checked={prefs.sms}
+                  onChange={(v) => setPrefs({ ...prefs, sms: v })}
+                  disabled
+                  badge="Coming soon"
+                />
+              </div>
+              <div className="px-5 py-4 sm:px-6">
+                <Button size="sm" loading={savePrefs.isPending} onClick={() => savePrefs.mutate()}>
+                  Save preferences
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader title="Notifications" subtitle="How you'd like to be reminded" icon={<Bell className="h-5 w-5" />} />
+              <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+                <Alert tone="info">Notification preferences for provider accounts are coming in a future update.</Alert>
+              </div>
+            </Card>
+          )}
 
           {/* Security */}
           <Card>
@@ -171,14 +235,31 @@ function ThemeCard({ active, onClick, icon, label }: { active: boolean; onClick:
   )
 }
 
-function PrefRow({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+function PrefRow({
+  label,
+  desc,
+  checked,
+  onChange,
+  disabled,
+  badge,
+}: {
+  label: string
+  desc: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  badge?: string
+}) {
   return (
     <div className="flex items-center justify-between gap-4 py-3.5">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          {badge && <Badge tone="neutral">{badge}</Badge>}
+        </div>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-      <Switch checked={checked} onChange={onChange} />
+      <Switch checked={checked} onChange={onChange} disabled={disabled} />
     </div>
   )
 }

@@ -97,8 +97,14 @@ const addReading = handelAsyncFunction(async (req, res, next) => {
     month: recordDate.getMonth() + 1,
   };
 
-  // Push
+  // Push, capping the embedded array so a long-lived account can't grow this document
+  // unboundedly (readings are still fully available via pagination if ever needed — this just
+  // bounds how much a single BPTracking document can hold).
+  const READINGS_CAP = 730; // ~2 years of daily readings, generous for real usage
   bpProfile.readings.push(newReading);
+  if (bpProfile.readings.length > READINGS_CAP) {
+    bpProfile.readings = bpProfile.readings.slice(-READINGS_CAP);
+  }
   bpProfile.recentSuggestion = recentSuggestion;
 
   // Deduct stock

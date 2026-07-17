@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import path from "path";
 import supabase from "../configure/supabase.js";
 
 /**
@@ -26,17 +28,39 @@ import supabase from "../configure/supabase.js";
  *   5. Classifies file type (image / video / pdf).
  *   6. Returns a list of uploaded file details.
  */
+// Buckets we've already confirmed exist this process — avoids a listBuckets round-trip on
+// every upload once a bucket has been created/verified once.
+const ensuredBuckets = new Set();
+
+/** Create the bucket (public, so getPublicUrl works) if it doesn't already exist. Supabase
+ * projects start with zero storage buckets — nothing provisions them ahead of time, so the
+ * first upload to a new bucket name creates it. */
+async function ensureBucket(bucket) {
+  if (ensuredBuckets.has(bucket)) return;
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) throw listError;
+  if (!buckets.some((b) => b.name === bucket)) {
+    const { error: createError } = await supabase.storage.createBucket(bucket, { public: true });
+    // Ignore a race where another request created it in between our check and this call.
+    if (createError && !/already exists/i.test(createError.message || "")) throw createError;
+  }
+  ensuredBuckets.add(bucket);
+}
+
 async function uploadToCloud(files, bucket) {
   let media = [];
 
   if (!files || files.length === 0) return media;
   if (!bucket) throw new Error("Bucket name is required.");
+  await ensureBucket(bucket);
 
   // Upload all files to Supabase
   const supabaseFiles = await Promise.all(
     files.map(async (file) => {
-      // Generate a unique filename
-      const fileName = `${Date.now()}-${file.originalname}`;
+      // Generate a random, non-guessable storage key — the bucket is public, so this is the only
+      // thing standing between "you have the URL" and "you can enumerate other patients' files."
+      // The human-readable original filename is preserved separately in MedicalDocument.fileName.
+      const fileName = `${randomUUID()}${path.extname(file.originalname).slice(0, 10)}`;
 
       // Upload to the given bucket name
       const { data, error } = await supabase.storage

@@ -3,12 +3,18 @@ import { mail } from "../../service/email.js";
 import Hospital from "../../models/hospital/hospitalModel.js";
 import handelAsyncFunction from "../../utils/asyncFunctionHandler.js";
 import CustomError from "../../utils/customError.js";
+import { resolveGeoLocation } from "../../utils/resolveGeoLocation.js";
 
 const createHospital = handelAsyncFunction(async (req, res, next) => {
 
   if (!req.body || !req.body.email) return next(new CustomError(400, "No data sent or email missing."));
 
   const { email } = req.body;
+
+  // Resolve location — use given coordinates, or geocode the address as a fallback for when
+  // the browser couldn't/wouldn't share device geolocation.
+  req.body.geoLocation = await resolveGeoLocation({ geoLocation: req.body.geoLocation, address: req.body.address });
+
   const existing = await Hospital.findOne({ email });
 
   const verificationToken = generateToken();
@@ -44,7 +50,7 @@ const createHospital = handelAsyncFunction(async (req, res, next) => {
   }
 
   // send verification email
-  const link = `${req.protocol}://${req.get("host")}/api/hospital/verify/${verificationToken}`;
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=hospital`;
   const mailRes = await mail(req.body.name || "Hospital", link, email);
 
   // CHECK: standardized return from email.js

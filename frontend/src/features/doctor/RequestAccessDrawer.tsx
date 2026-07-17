@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Phone, KeyRound, ShieldCheck, ArrowLeft } from 'lucide-react'
 import { Drawer, Field, Input, Textarea, Select, Button, Alert } from '@/components/ui'
 import { useToast } from '@/context/ToastContext'
 import { doctorApi } from '@/api/doctor'
 import { ApiError } from '@/api/client'
+import { countdown } from '@/lib/format'
 
 const DURATIONS = [
   { label: '6 hours', value: '6hours' },
@@ -37,6 +38,14 @@ export function RequestAccessDrawer({ open, onClose }: { open: boolean; onClose:
       setError(null)
     }
   }, [open])
+
+  // Reuses the same cache key DoctorDashboard.tsx already populates — free to query here too.
+  const patients = useQuery({ queryKey: ['doctor', 'patients'], queryFn: doctorApi.listPatients })
+  const existingGrant = useMemo(() => {
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 8) return null
+    return (patients.data ?? []).find((a) => a.isActive && a.patientId?.phone_no?.replace(/\D/g, '').endsWith(digits.slice(-8)))
+  }, [phone, patients.data])
 
   const request = useMutation({
     mutationFn: () => doctorApi.requestAccess({ patientPhone: phone, reason, expiryDuration: duration }),
@@ -100,6 +109,12 @@ export function RequestAccessDrawer({ open, onClose }: { open: boolean; onClose:
                 leftIcon={<Phone className="h-4.5 w-4.5" />}
               />
             </Field>
+            {existingGrant && (
+              <Alert tone="warning" title="You may already have access">
+                {existingGrant.patientId?.name || 'This patient'} already granted you access, expiring in{' '}
+                {countdown(existingGrant.expiresAt)}. Check "My Patients" before sending a new request.
+              </Alert>
+            )}
             <Field label="Access duration">
               <Select options={DURATIONS} value={duration} onChange={(e) => setDuration(e.target.value)} />
             </Field>

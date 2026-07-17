@@ -30,7 +30,7 @@ const doctorRegister = handelAsyncFunction(async (req, res, next) => {
     });
   }
 
-  const link = `${req.protocol}://${req.get("host")}/api/doctor/verify/${verificationToken}`;
+  const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=doctor`;
   const mailRes = await mail(req.body.name || "Doctor", link, email);
 
   if (!mailRes || mailRes.success === false) {

@@ -73,6 +73,9 @@ const bpSchema = new mongoose.Schema(
     tabletsPerDay: { type: Number, default: null },
     stockAvailable: { type: Number, default: null },
     todaysIntake: { type: Number, default: 0 },
+    // Date (local midnight) that todaysIntake was last reset for — lets reads/writes lazily
+    // zero the counter on a new day instead of it staying pinned at tabletsPerDay forever.
+    lastIntakeDate: { type: Date, default: null },
 
     // Universal suggestion for latest reading
     recentSuggestion: {
@@ -86,5 +89,7 @@ const bpSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Supports the reminder cron's narrowed find({tabletsPerDay: {$gt:0}, ...}) query.
+bpSchema.index({ tabletsPerDay: 1 });
 
 export default mongoose.model("BPTracking", bpSchema);

@@ -11,6 +11,11 @@ import {
   Users,
   Stethoscope,
   Building2,
+  PackageSearch,
+  Store,
+  ClipboardList,
+  CalendarClock,
+  History,
 } from 'lucide-react'
 import type { Role } from '@/types'
 
@@ -26,6 +31,9 @@ const patientNav: NavItem[] = [
   { label: 'Vitals', to: '/app/vitals', icon: <HeartPulse className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Reminders', to: '/app/reminders', icon: <BellRing className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Health Wallet', to: '/app/documents', icon: <FolderHeart className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Health Background', to: '/app/health-forms', icon: <ClipboardList className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Consultations', to: '/app/consultations', icon: <CalendarClock className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Health Timeline', to: '/app/timeline', icon: <History className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Access & Sharing', to: '/app/sharing', icon: <Share2 className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Find Medicine', to: '/app/pharmacy', icon: <Pill className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'AI Assistant', to: '/app/assistant', icon: <Sparkles className="h-[1.15rem] w-[1.15rem]" /> },
@@ -35,6 +43,7 @@ const patientNav: NavItem[] = [
 const doctorNav: NavItem[] = [
   { label: 'Dashboard', to: '/app/doctor', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" />, end: true },
   { label: 'My Patients', to: '/app/doctor/patients', icon: <Users className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Consultations', to: '/app/doctor/consultations', icon: <CalendarClock className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
 ]
 
@@ -42,6 +51,13 @@ const hospitalNav: NavItem[] = [
   { label: 'Dashboard', to: '/app/hospital', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" />, end: true },
   { label: 'Doctors', to: '/app/hospital/doctors', icon: <Stethoscope className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Facility', to: '/app/hospital/facility', icon: <Building2 className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
+]
+
+const pharmacyNav: NavItem[] = [
+  { label: 'Dashboard', to: '/app/pharmacy-portal', icon: <LayoutDashboard className="h-[1.15rem] w-[1.15rem]" />, end: true },
+  { label: 'Stock', to: '/app/pharmacy-portal/stock', icon: <PackageSearch className="h-[1.15rem] w-[1.15rem]" /> },
+  { label: 'Facility', to: '/app/pharmacy-portal/facility', icon: <Store className="h-[1.15rem] w-[1.15rem]" /> },
   { label: 'Profile', to: '/app/profile', icon: <UserCog className="h-[1.15rem] w-[1.15rem]" /> },
 ]
 
@@ -54,6 +70,7 @@ export function navForRole(role: Role): NavItem[] {
   if (role === 'patient') return patientNav
   if (role === 'doctor') return doctorNav
   if (role === 'hospital') return hospitalNav
+  if (role === 'pharmacy') return pharmacyNav
   return minimalNav
 }
 
@@ -61,6 +78,7 @@ export function navForRole(role: Role): NavItem[] {
 export function roleHome(role: Role): string {
   if (role === 'doctor') return '/app/doctor'
   if (role === 'hospital') return '/app/hospital'
+  if (role === 'pharmacy') return '/app/pharmacy-portal'
   return '/app/dashboard'
 }
 

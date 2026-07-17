@@ -24,5 +24,12 @@ const patientAccessSchema = new Schema(
   { timestamps: true }
 );
 
+// This is the query behind nearly every authorization check in the app (documentAccess.js
+// middleware, "who has access" lists, consultation booking's upsert) — it's the single most
+// load-bearing index in the schema.
+patientAccessSchema.index({ patientId: 1, doctorId: 1 });
+// Supports "list my patients" (doctor dashboard) filtered/sorted by active status.
+patientAccessSchema.index({ doctorId: 1, isActive: 1 });
+
 delete mongoose.models.PatientAccess;
 export default mongoose.model("PatientAccess", patientAccessSchema);
