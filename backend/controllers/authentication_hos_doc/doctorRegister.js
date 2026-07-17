@@ -31,12 +31,13 @@ const doctorRegister = handelAsyncFunction(async (req, res, next) => {
   }
 
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=doctor`;
-  const mailRes = await mail(req.body.name || "Doctor", link, email);
 
-  if (!mailRes || mailRes.success === false) {
-    console.error("doctorRegister mail error:", mailRes && mailRes.error);
-    return next(new CustomError(500, "Email sending failed."));
-  }
+  // Account creation must not block on email delivery — fire-and-forget with logging.
+  mail(req.body.name || "Doctor", link, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("doctorRegister mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("doctorRegister mail error:", err.message));
 
   res.status(201).send({ status: "success", message: `Doctor verification email sent to ${email}` });
 });

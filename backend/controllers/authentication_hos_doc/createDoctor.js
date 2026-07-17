@@ -46,14 +46,13 @@ const createDoctorByHospital = handelAsyncFunction(async (req, res, next) => {
     await Doctor.create(doctorData);
   }
 
-  // Send email to doctor with verification link and hospital info
+  // Send email to doctor with verification link and hospital info — fire-and-forget
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${token}?role=doctor`;
-  const mailRes = await mail(req.body.name || "Doctor", link, email);
-
-  if (!mailRes || mailRes.success === false) {
-    console.error("createDoctor mail error:", mailRes && mailRes.error);
-    return next(new CustomError(500, "Email service error."));
-  }
+  mail(req.body.name || "Doctor", link, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("createDoctor mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("createDoctor mail error:", err.message));
 
   res.status(201).send({ status: "success", message: `Doctor created & verification email sent to ${email}` });
 });

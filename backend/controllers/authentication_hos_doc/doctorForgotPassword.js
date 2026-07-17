@@ -23,11 +23,11 @@ const doctorForgotPassword = handelAsyncFunction(async (req, res, next) => {
 
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${resetToken}?role=doctor`;
 
-  const mailRes = await mailForgotPassword(doctor.name, link, doctor.email);
-  if (!mailRes || mailRes.success === false) {
-    console.error("doctorForgotPassword mail error:", mailRes && mailRes.error);
-    return next(new CustomError(500, "Email service error"));
-  }
+  mailForgotPassword(doctor.name, link, doctor.email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("doctorForgotPassword mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("doctorForgotPassword mail error:", err.message));
 
   res.status(200).send({
     status: "success",

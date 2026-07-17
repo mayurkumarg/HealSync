@@ -1,11 +1,18 @@
 import nodemailer from "nodemailer";
 
+// Explicit timeouts — without these, a blocked/slow outbound path to Gmail's SMTP servers (a
+// real possibility on some hosting platforms) hangs the connection indefinitely instead of
+// failing fast, which in turn hangs every request that awaits an email send (signup, password
+// reset, reminders) with no error and no response.
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 // ---------------------------------------------------------

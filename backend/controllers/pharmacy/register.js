@@ -55,14 +55,12 @@ const createPharmacy = handelAsyncFunction(async (req, res, next) => {
   // ^ Step 5: Generate email verification link
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=pharmacy`;
 
-  // ^ Step 6: Send verification email
-  const mailerRes = await mail(req.body.name, link, email, next);
-
-  if (!mailerRes || mailerRes.success === false) {
-    return next(
-      new CustomError(500, "Our email server is down! Please try again later.")
-    );
-  }
+  // ^ Step 6: Send verification email — fire-and-forget, must not block account creation
+  mail(req.body.name, link, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("createPharmacy mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("createPharmacy mail error:", err.message));
 
   // ^ Step 7: Successful registration
   res.status(201).send({

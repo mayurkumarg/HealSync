@@ -35,12 +35,12 @@ const forgotPassword = handelAsyncFunction(async (req, res, next) => {
 
     await user.save();
 
-    //^ mail the password reset link to the user email address
-    const mailerRes = await mailForgotPassword(user.name, resetLink, email);
-
-    if (!mailerRes || mailerRes.success === false) {
-        return next(new CustomError(500, "Our email server is down! Please try again later."));
-    }
+    //^ mail the password reset link to the user email address — fire-and-forget, must not block
+    mailForgotPassword(user.name, resetLink, email)
+        .then((mailRes) => {
+            if (!mailRes?.success) console.error("forgotPassword mail error:", mailRes?.error);
+        })
+        .catch((err) => console.error("forgotPassword mail error:", err.message));
 
     //? notify user that the reset password link has been sent
     res.status(200).send({

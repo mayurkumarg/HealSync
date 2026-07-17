@@ -62,17 +62,15 @@ const createUser = handelAsyncFunction(async (req, res, next) => {
   // matching role-specific backend verify endpoint itself.
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=patient`;
 
-  // Send verification email
-  const mailerRes = await mail(req.body.name, link, email, next);
+  // Account creation must not block on email delivery — a slow/unreachable SMTP path (real risk
+  // on some hosts) would otherwise hang the whole signup request. Fire-and-forget with logging;
+  // the account already exists and can be verified via a resend if this fails.
+  mail(req.body.name, link, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("[createUser] Verification email failed to send:", mailRes?.error);
+    })
+    .catch((err) => console.error("[createUser] Verification email failed to send:", err.message));
 
-  // testing logic was correct → use it:
-  if (!mailerRes || mailerRes.success === false) {
-    return next(
-      new CustomError(500, "Our email server is down! Please try again later.")
-    );
-  }
-
-  // Email sent successfully
   return res.status(201).send({
     status: "success",
     message: `Email sent to your ${email} address. Please verify your email`,

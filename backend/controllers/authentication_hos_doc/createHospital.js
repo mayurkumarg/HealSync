@@ -49,15 +49,13 @@ const createHospital = handelAsyncFunction(async (req, res, next) => {
     await Hospital.create(createData);
   }
 
-  // send verification email
+  // send verification email — fire-and-forget, must not block account creation
   const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify/${verificationToken}?role=hospital`;
-  const mailRes = await mail(req.body.name || "Hospital", link, email);
-
-  // CHECK: standardized return from email.js
-  if (!mailRes || mailRes.success === false) {
-    console.error("createHospital mail error:", mailRes && mailRes.error);
-    return next(new CustomError(500, "Email server error."));
-  }
+  mail(req.body.name || "Hospital", link, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("createHospital mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("createHospital mail error:", err.message));
 
   res.status(201).send({ status: "success", message: `Verification email sent to ${email}` });
 });

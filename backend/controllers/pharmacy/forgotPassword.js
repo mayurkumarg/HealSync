@@ -35,16 +35,12 @@ const forgotPasswordPharmacy = handelAsyncFunction(async (req, res, next) => {
   pharmacy.tokenExpires = tokenExpire;
   await pharmacy.save();
 
-  //~ Step 6: Send email with reset link
-  const mailerRes = await mailForgotPassword(pharmacy.name, resetLink, email);
-  if (!mailerRes || mailerRes.success === false) {
-    return next(
-      new CustomError(
-        500,
-        "Our email server is down! Please try again later."
-      )
-    );
-  }
+  //~ Step 6: Send email with reset link — fire-and-forget, must not block the response
+  mailForgotPassword(pharmacy.name, resetLink, email)
+    .then((mailRes) => {
+      if (!mailRes?.success) console.error("forgotPasswordPharmacy mail error:", mailRes?.error);
+    })
+    .catch((err) => console.error("forgotPasswordPharmacy mail error:", err.message));
 
   //~ Step 7: Send success response
   res.status(200).send({
