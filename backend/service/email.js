@@ -1,30 +1,57 @@
 import axios from "axios";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM || "HealSync <onboarding@resend.dev>";
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+// Must be an address verified as a "Sender" in Brevo (Senders, Domains & Dedicated IPs -> Senders).
+// Brevo rejects transactional sends from any address that isn't a verified sender.
+const BREVO_FROM = process.env.BREVO_FROM;
 
 // Render (and several other PaaS hosts) block outbound SMTP entirely as an anti-spam measure —
 // confirmed in production via a `command: 'CONN'` ETIMEDOUT that no amount of retrying or longer
-// timeouts fixes, since the connection never gets established at all. Resend's HTTPS API isn't
-// affected by that block. This shim mimics nodemailer's `.sendMail()` signature so every call
-// site below is unchanged — only the transport underneath is different.
+// timeouts fixes, since the connection never gets established at all. Brevo's HTTPS transactional
+// API isn't affected by that block. This shim mimics nodemailer's `.sendMail()` signature so every
+// call site below is unchanged — only the transport underneath is different.
+//
+// NOTE: this uses Brevo's TRANSACTIONAL endpoint (/v3/smtp/email — one-off emails to a single
+// recipient), NOT the campaign/marketing API (which sends to saved contact lists). Verification,
+// password-reset and reminder mails are all transactional.
 const transporter = {
   // `from` is deliberately ignored — every call site below sets it to a Gmail address (left over
-  // from the SMTP days), but Resend only accepts sending from a sender it has verified. Always
-  // sending as RESEND_FROM keeps every existing call site working unchanged.
+  // from the SMTP days), but Brevo only accepts sending from a verified sender. Always sending
+  // as BREVO_FROM keeps every existing call site working unchanged.
   async sendMail({ from: _from, to, subject, text, html }) {
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured.");
+    if (!BREVO_API_KEY) {
+      throw new Error("BREVO_API_KEY is not configured.");
     }
-    const { data } = await axios.post(
-      "https://api.resend.com/emails",
-      { from: RESEND_FROM, to, subject, text, html },
-      {
-        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-        timeout: 10000,
-      }
-    );
-    return { messageId: data.id, response: "resend" };
+    if (!BREVO_FROM) {
+      throw new Error("BREVO_FROM (your verified sender email) is not configured.");
+    }
+    try {
+      const { data } = await axios.post(
+        "https://api.brevo.com/v3/smtp/email",
+        {
+          sender: { email: BREVO_FROM, name: "HealSync" },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html || text || " ",
+          textContent: text || undefined,
+        },
+        {
+          headers: {
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+            accept: "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+      return { messageId: data?.messageId, response: "brevo" };
+    } catch (err) {
+      // Brevo's actual rejection reason (e.g. "sender not verified", invalid key) lives in the
+      // response body, not the generic axios error message every caller below logs — surface it
+      // here so it isn't lost.
+      const detail = err.response?.data?.message || err.response?.data?.code || err.message;
+      throw new Error(detail);
+    }
   },
 };
 
