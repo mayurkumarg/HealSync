@@ -26,9 +26,12 @@ export function ProfileMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-border bg-surface p-1 pr-2 transition-colors hover:bg-surface-2"
+        className="flex items-center gap-2 rounded-xl border border-border bg-surface p-1 pl-1 pr-2 transition-colors hover:bg-surface-2 sm:pl-2.5"
       >
         <Avatar name={user.name || user.email} size="sm" />
+        <span className="hidden max-w-[9rem] truncate text-sm font-medium text-foreground sm:block">
+          {user.name?.split(' ')[0] || 'Account'}
+        </span>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
 

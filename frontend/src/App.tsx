@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RoleRoute } from '@/routes/RoleRoute'
@@ -18,10 +18,8 @@ const NotFound = lazy(() => import('@/pages/NotFound'))
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const VitalsPage = lazy(() => import('@/features/vitals/VitalsPage'))
 const RemindersPage = lazy(() => import('@/features/reminders/RemindersPage'))
-const DocumentsPage = lazy(() => import('@/features/documents/DocumentsPage'))
-const HealthFormsPage = lazy(() => import('@/features/health-forms/HealthFormsPage'))
+const HealthRecordsPage = lazy(() => import('@/features/records/HealthRecordsPage'))
 const ConsultationsPage = lazy(() => import('@/features/consultations/ConsultationsPage'))
-const TimelinePage = lazy(() => import('@/features/timeline/TimelinePage'))
 const SharingPage = lazy(() => import('@/features/access/SharingPage'))
 const PharmacyPage = lazy(() => import('@/features/pharmacy/PharmacyPage'))
 const AssistantPage = lazy(() => import('@/features/chat/AssistantPage'))
@@ -72,10 +70,13 @@ export default function App() {
           <Route path="dashboard" element={<RoleRoute allow={['patient']}><DashboardPage /></RoleRoute>} />
           <Route path="vitals" element={<RoleRoute allow={['patient']}><VitalsPage /></RoleRoute>} />
           <Route path="reminders" element={<RoleRoute allow={['patient']}><RemindersPage /></RoleRoute>} />
-          <Route path="documents" element={<RoleRoute allow={['patient']}><DocumentsPage /></RoleRoute>} />
-          <Route path="health-forms" element={<RoleRoute allow={['patient']}><HealthFormsPage /></RoleRoute>} />
+          <Route path="records" element={<RoleRoute allow={['patient']}><HealthRecordsPage /></RoleRoute>} />
+          {/* Health Records merges the former Health Wallet, Health Background and Timeline pages.
+              Keep the old paths working (bookmarks, external links) by redirecting into the hub. */}
+          <Route path="documents" element={<Navigate to="/app/records" replace />} />
+          <Route path="health-forms" element={<Navigate to="/app/records?tab=background" replace />} />
+          <Route path="timeline" element={<Navigate to="/app/records?tab=timeline" replace />} />
           <Route path="consultations" element={<RoleRoute allow={['patient']}><ConsultationsPage /></RoleRoute>} />
-          <Route path="timeline" element={<RoleRoute allow={['patient']}><TimelinePage /></RoleRoute>} />
           <Route path="sharing" element={<RoleRoute allow={['patient']}><SharingPage /></RoleRoute>} />
           <Route path="pharmacy" element={<RoleRoute allow={['patient']}><PharmacyPage /></RoleRoute>} />
           <Route path="assistant" element={<RoleRoute allow={['patient']}><AssistantPage /></RoleRoute>} />

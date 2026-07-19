@@ -57,7 +57,7 @@ export default function DashboardPage() {
   const checklist = [
     { label: 'Log your first vital reading', done: !!latestBp || !!latestSugar, to: '/app/vitals' },
     { label: 'Set a reminder', done: (upcoming.data?.length ?? 0) > 0, to: '/app/reminders' },
-    { label: 'Upload a health document', done: (docs.data?.length ?? 0) > 0, to: '/app/documents' },
+    { label: 'Upload a health document', done: (docs.data?.length ?? 0) > 0, to: '/app/records' },
     { label: 'Share access with a doctor', done: activeShares > 0, to: '/app/sharing' },
   ]
   const showOnboarding = !onboardingDismissed && !stillLoading && checklist.every((c) => !c.done)
@@ -266,7 +266,7 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader
-              title="Health wallet"
+              title="Health records"
               subtitle={`${docs.data?.length ?? 0} documents`}
               icon={<FolderHeart className="h-5 w-5" />}
             />
@@ -274,9 +274,9 @@ export default function DashboardPage() {
               {docs.isLoading ? (
                 <Skeleton className="h-12 w-full rounded-xl" />
               ) : (
-                <Link to="/app/documents">
+                <Link to="/app/records">
                   <Button variant="outline" fullWidth rightIcon={<ArrowRight className="h-4 w-4" />}>
-                    Open wallet
+                    Open records
                   </Button>
                 </Link>
               )}

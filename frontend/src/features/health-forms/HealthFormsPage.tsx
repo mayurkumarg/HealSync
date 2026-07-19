@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ClipboardPlus, ClipboardList, Trash2, User2 } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, Badge, Button, EmptyState, Skeleton, ConfirmDialog } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -40,11 +39,14 @@ export default function HealthFormsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Health Background"
-        description="Allergies, conditions, medications and history your doctors should know about."
-        action={<Button leftIcon={<ClipboardPlus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>Add entry</Button>}
-      />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Allergies, conditions, medications and history your doctors should know about.
+        </p>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <Button leftIcon={<ClipboardPlus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>Add entry</Button>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2">

@@ -13,7 +13,6 @@ import {
   Sparkles,
   FolderHeart,
 } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { ComingSoon } from '@/components/shared/ComingSoon'
 import {
   Card,
@@ -95,18 +94,17 @@ export default function DocumentsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Health Wallet"
-        description="Every report, prescription and scan — encrypted and always with you."
-        action={
-          <>
-            <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onPick} />
-            <Button leftIcon={<Upload className="h-4 w-4" />} loading={upload.isPending} onClick={() => fileRef.current?.click()}>
-              Upload document
-            </Button>
-          </>
-        }
-      />
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Every report, prescription and scan — encrypted and always with you.
+        </p>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onPick} />
+          <Button leftIcon={<Upload className="h-4 w-4" />} loading={upload.isPending} onClick={() => fileRef.current?.click()}>
+            Upload document
+          </Button>
+        </div>
+      </div>
 
       {isError && (
         <Alert tone="danger" title="Could not load your documents" className="mb-5">

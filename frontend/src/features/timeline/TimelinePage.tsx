@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { History, HeartPulse, Droplet, FolderHeart, Stethoscope, ClipboardList } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { ComingSoon } from '@/components/shared/ComingSoon'
 import { Card, EmptyState, LoadingState, Alert } from '@/components/ui'
 import { useAuth } from '@/context/AuthContext'
@@ -24,10 +23,9 @@ export default function TimelinePage() {
 
   return (
     <div>
-      <PageHeader
-        title="Health Timeline"
-        description="A chronological view of your vitals, documents, consultations and health records."
-      />
+      <p className="mb-6 text-sm text-muted-foreground">
+        A chronological view of your vitals, documents, consultations and health records.
+      </p>
 
       {isLoading ? (
         <LoadingState label="Loading your timeline…" />
