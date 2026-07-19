@@ -1,56 +1,125 @@
 import axios from "axios";
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-// Must be an address verified as a "Sender" in Brevo (Senders, Domains & Dedicated IPs -> Senders).
-// Brevo rejects transactional sends from any address that isn't a verified sender.
-const BREVO_FROM = process.env.BREVO_FROM;
-
+// ---------------------------------------------------------
+// GMAIL API TRANSPORT (HTTPS — not SMTP)
+// ---------------------------------------------------------
 // Render (and several other PaaS hosts) block outbound SMTP entirely as an anti-spam measure —
 // confirmed in production via a `command: 'CONN'` ETIMEDOUT that no amount of retrying or longer
-// timeouts fixes, since the connection never gets established at all. Brevo's HTTPS transactional
-// API isn't affected by that block. This shim mimics nodemailer's `.sendMail()` signature so every
-// call site below is unchanged — only the transport underneath is different.
+// timeouts fixes, since the connection never gets established at all. So plain Gmail/nodemailer
+// SMTP (and even nodemailer's Gmail OAuth2, which still dials smtp.gmail.com) cannot work here.
 //
-// NOTE: this uses Brevo's TRANSACTIONAL endpoint (/v3/smtp/email — one-off emails to a single
-// recipient), NOT the campaign/marketing API (which sends to saved contact lists). Verification,
-// password-reset and reminder mails are all transactional.
+// This transport instead sends through the Gmail REST API over HTTPS (googleapis.com), which the
+// SMTP block doesn't touch. Mail goes out as the authenticated Gmail account itself, so it lands
+// in the inbox (no shared-ESP-domain reputation / rate-limit problems) and needs no custom domain.
+//
+// Auth is OAuth2: a long-lived refresh token (obtained once) is exchanged for short-lived access
+// tokens on demand. Access tokens are cached until shortly before they expire.
+//
+// Required env vars (see .env.example for how to obtain them):
+//   GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, GMAIL_SENDER
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
+// The Gmail account the OAuth token belongs to — the address mail is sent "from".
+const GMAIL_SENDER = process.env.GMAIL_SENDER;
+
+let cachedAccessToken = null; // { token, expiresAt (ms) }
+
+async function getGmailAccessToken() {
+  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) {
+    return cachedAccessToken.token;
+  }
+  try {
+    const { data } = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      new URLSearchParams({
+        client_id: GMAIL_CLIENT_ID,
+        client_secret: GMAIL_CLIENT_SECRET,
+        refresh_token: GMAIL_REFRESH_TOKEN,
+        grant_type: "refresh_token",
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10_000 }
+    );
+    cachedAccessToken = {
+      token: data.access_token,
+      expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+    };
+    return data.access_token;
+  } catch (err) {
+    // invalid_grant here usually means the refresh token was revoked or expired (which happens if
+    // the OAuth consent screen is left in "Testing" mode — publish it to "Production" to stop the
+    // 7-day expiry). Surface Google's reason instead of a generic axios message.
+    const g = err.response?.data;
+    throw new Error(g ? `${g.error}: ${g.error_description || ""}`.trim() : err.message);
+  }
+}
+
+// Build a base64url-encoded RFC 5322 message. Everything is UTF-8 base64-encoded so the emojis and
+// en dashes in the templates survive, the Subject is a proper RFC 2047 encoded-word, and no body
+// line exceeds the 998-octet limit.
+function buildRawMessage({ to, subject, text, html }) {
+  const b64Body = (s) =>
+    Buffer.from(s, "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+  const encodedSubject = `=?UTF-8?B?${Buffer.from(subject || "", "utf-8").toString("base64")}?=`;
+  const boundary = `healsync_${Date.now().toString(36)}`;
+
+  const lines = [
+    `From: HealSync <${GMAIL_SENDER}>`,
+    `To: ${to}`,
+    `Subject: ${encodedSubject}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    b64Body(text || " "),
+    "",
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    b64Body(html || text || " "),
+    "",
+    `--${boundary}--`,
+    "",
+  ];
+
+  return Buffer.from(lines.join("\r\n"), "utf-8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+// This shim mimics nodemailer's `.sendMail()` signature so every call site below is unchanged —
+// only the transport underneath is different.
 const transporter = {
   // `from` is deliberately ignored — every call site below sets it to a Gmail address (left over
-  // from the SMTP days), but Brevo only accepts sending from a verified sender. Always sending
-  // as BREVO_FROM keeps every existing call site working unchanged.
+  // from the SMTP days), but the Gmail API always sends as the authenticated GMAIL_SENDER account.
   async sendMail({ from: _from, to, subject, text, html }) {
-    if (!BREVO_API_KEY) {
-      throw new Error("BREVO_API_KEY is not configured.");
-    }
-    if (!BREVO_FROM) {
-      throw new Error("BREVO_FROM (your verified sender email) is not configured.");
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_SENDER) {
+      throw new Error(
+        "Gmail API is not configured (need GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, GMAIL_SENDER)."
+      );
     }
     try {
+      const accessToken = await getGmailAccessToken();
       const { data } = await axios.post(
-        "https://api.brevo.com/v3/smtp/email",
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        { raw: buildRawMessage({ to, subject, text, html }) },
         {
-          sender: { email: BREVO_FROM, name: "HealSync" },
-          to: [{ email: to }],
-          subject,
-          htmlContent: html || text || " ",
-          textContent: text || undefined,
-        },
-        {
-          headers: {
-            "api-key": BREVO_API_KEY,
-            "Content-Type": "application/json",
-            accept: "application/json",
-          },
-          timeout: 10000,
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          timeout: 10_000,
         }
       );
-      return { messageId: data?.messageId, response: "brevo" };
+      return { messageId: data.id, response: "gmail-api" };
     } catch (err) {
-      // Brevo's actual rejection reason (e.g. "sender not verified", invalid key) lives in the
-      // response body, not the generic axios error message every caller below logs — surface it
-      // here so it isn't lost.
-      const detail = err.response?.data?.message || err.response?.data?.code || err.message;
-      throw new Error(detail);
+      // Gmail's real rejection reason lives in the response body, not the generic axios message
+      // every caller below logs — surface it here so it isn't lost.
+      const detail = err.response?.data?.error?.message || err.response?.data?.error || err.message;
+      throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
     }
   },
 };
